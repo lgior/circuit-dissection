@@ -270,15 +270,15 @@ method_col = args.optim
 pos_dict = {"conv5": (7, 7), "conv4": (7, 7), "conv3": (7, 7), "conv2": (14, 14), "conv1": (28, 28)}
 
 # Get the center position of the feature map.
-if not "fc" in args.layer:
-    if not args.net in layername_dict:  # TODO:Check the logic
+if not "fc" in args.layer and not ".classifier" in args.layer:
+    # if not args.net in layername_dict:  # TODO:Check the logic
         module_names, module_types, module_spec = get_module_names(scorer.model, input_size=(3, 227, 227), device="cuda")
         layer_key = [k for k, v in module_names.items() if v == args.layer][0]
         feat_outshape = module_spec[layer_key]['outshape']
         assert len(feat_outshape) == 3  # fc layer will fail
         cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
-    else:
-        cent_pos = pos_dict[args.layer]
+    # else:
+    #     cent_pos = pos_dict[args.layer]
 else:
     cent_pos = None
 
@@ -301,7 +301,7 @@ print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
 
 #%% Start iterating through channels.
 for unit_id in range(args.chans[0], args.chans[1]):
-    if "fc" in args.layer:
+    if "fc" in args.layer or "classifier" in args.layer:
         unit = (args.net, args.layer, unit_id)
     else:
         unit = (args.net, args.layer, unit_id, *cent_pos)
