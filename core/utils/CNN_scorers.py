@@ -38,6 +38,8 @@ else:
         torchhome = r"E:\Cluster_Backup\torch"
     elif os.environ['COMPUTERNAME'] =='PONCELAB-OFF6':
         torchhome = r"C:\Users\ponce\Documents\torch"
+    elif os.environ['COMPUTERNAME'] =='MNB-PONC-D21184':
+        torchhome = r"M:\Data\torch_home"
     else:
         # torchhome = torch.hub._get_torch_home()
         torchhome = torch.hub.get_dir()  # torch.hub._get_torch_home()
