@@ -129,6 +129,25 @@ class TorchScorer:
                 self.layers = list(self.model.features) + list(self.model.classifier)
                 self.layername = None if rawlayername else layername_dict[model_name]
                 self.inputsize = (3, imgpix, imgpix)
+            elif "alexnet-eco" in model_name:
+                import re
+                self.model = models.__dict__['alexnet'](pretrained=False, num_classes=565)
+                if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
+                    checkpoint_dir = r"M:\Code\training-checkpoints"
+                else:
+                    checkpoint_dir = r"C:\Users\giordano\Documents\Code\training-checkpoints"  # old PC
+                checkpoint_file = "checkpoint_%03d.pth.tar" % int(re.findall(r'\d+$', model_name)[0])
+                checkpoint = torch.load(join(checkpoint_dir, checkpoint_file))
+                # GR correct names of checkpoint dictionary, mismatch due to saving the nn.DataParallel model
+                state_dict = {}
+                for k, v in checkpoint["state_dict"].items():
+                    state_dict[k.replace(".module", "")] = v
+                self.model.load_state_dict(state_dict)
+                print(self.model)
+                print('this was the model')
+                self.layers = list(self.model.features) + list(self.model.classifier)
+                self.layername = None if rawlayername else layername_dict[model_name]
+                self.inputsize = (3, imgpix, imgpix)
             elif model_name == "densenet121":
                 self.model = models.densenet121(pretrained=True)
                 self.layers = list(self.model.features) + [self.model.classifier]
