@@ -43,15 +43,25 @@ def load_neural_data():
 
 def get_expstr(BFEStats, Expi):
     S = BFEStats[Expi - 1]  # Expi follows matlab convention, starts from 1
+    space_names = S['evol']['space_names']
+    if isinstance(space_names[0], list):
+        space_names = [n[0] for n in space_names]
+    elif isinstance(space_names[0], str):
+        pass
     expstr = f"Exp {Expi:03d} {S['meta']['ephysFN']} Pref chan{int(S['evol']['pref_chan'][0])} U{int(S['evol']['unit_in_pref_chan'][0])}" \
              f"\nimage size {S['evol']['imgsize']} deg  pos {S['evol']['imgpos'][0]}" \
-             f"\nEvol thr0: {S['evol']['space_names'][0][0]}" \
-             f"   thr1: {S['evol']['space_names'][1][0]}"
+             f"\nEvol thr0: {space_names[0]}" \
+             f"   thr1: {space_names[1]}"
     return expstr
 
 
 def load_img_resp_pairs(BFEStats, Expi, ExpType, thread=0, stimdrive="S:", output_fmt="vec",
-                        rsp_wdw = range(50, 200), bsl_wdw = range(0, 45)):
+                        rsp_wdw=range(50, 200), bsl_wdw=range(0, 45)):
+    """ Extract the image and response pairs from the BFEStats. for one thread / one experiment.
+    output_fmt: str, "vec" or "arr",
+        "vec" returns a flattened vector of image paths and a vector of responses,
+        "arr" returns a nested list of image paths and responses, each element corresponds to one block.
+    """
     S = BFEStats[Expi - 1].copy()  # Expi follows matlab convention, starts from 1
     # parse the full path of the images
     stimpath = S["meta"]["stimuli"]
@@ -92,6 +102,48 @@ def load_img_resp_pairs(BFEStats, Expi, ExpType, thread=0, stimdrive="S:", outpu
             raise ValueError("output_fmt should be vec or arr")
     elif ExpType == "natref":
         raise NotImplementedError
+
+
+def extract_evol_activation_array(S, thread, rsp_wdw=range(50, 200), bsl_wdw=range(0, 45)):
+    psth_thread = S["evol"]["psth"][thread]
+    imgidx_thread = S["evol"]["idx_seq"][thread]
+    resp_arr = []
+    bsl_arr = []
+    imgidx_arr = []
+    gen_arr = []
+    for blocki in range(len(psth_thread)):
+        psth_arr = _format_psth_arr(psth_thread[blocki])  # time x images
+        resp_arr.append(psth_arr[rsp_wdw, :].mean(axis=0))
+        bsl_arr.append(psth_arr[bsl_wdw, :].mean(axis=0))
+        idx_arr = _format_idx_arr(imgidx_thread[blocki])
+        imgidx_arr.append(idx_arr)
+        gen_arr.append((blocki + 1) * np.ones_like(idx_arr))
+
+    resp_vec = np.concatenate(resp_arr, axis=0)
+    bsl_vec = np.concatenate(bsl_arr, axis=0)
+    imgidx_vec = np.concatenate(imgidx_arr, axis=0)
+    gen_vec = np.concatenate(gen_arr, axis=0)
+    return resp_arr, bsl_arr, gen_arr, resp_vec, bsl_vec, gen_vec
+
+
+def parse_montage(mtg):
+    """Parse the montage into different subimages.
+    for the proto montage files in the ProtoSummary folder
+    """
+    from core.utils.montage_utils import crop_from_montage
+    mtg = mtg.astype(np.float32) / 255.0
+    S = edict()
+    S.FC_maxblk = crop_from_montage(mtg, (0, 0), 224, 0)
+    S.FC_maxblk_avg = crop_from_montage(mtg, (0, 1), 224, 0)
+    S.FC_reevol_G = crop_from_montage(mtg, (0, 2), 224, 0)
+    S.FC_reevol_pix = crop_from_montage(mtg, (0, 3), 224, 0)
+    S.BG_maxblk = crop_from_montage(mtg, (1, 0), 224, 0)
+    S.BG_maxblk_avg = crop_from_montage(mtg, (1, 1), 224, 0)
+    S.BG_reevol_G = crop_from_montage(mtg, (1, 2), 224, 0)
+    S.BG_reevol_pix = crop_from_montage(mtg, (1, 3), 224, 0)
+    S.both_reevol_G = crop_from_montage(mtg, (2, 2), 224, 0)
+    S.both_reevol_pix = crop_from_montage(mtg, (2, 3), 224, 0)
+    return S
 
 
 def _format_psth_arr(psth_block_arr):

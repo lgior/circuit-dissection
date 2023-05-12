@@ -1,8 +1,6 @@
-""" Cluster version of BigGAN Evol """
-import re
+""" Local version of BigGAN Evol """
 import sys
-# sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
-sys.path.append(r"\C:\Users\giordano\Documents\Code\Neuro-ActMax-GAN-comparison")
+sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
 import os
 import tqdm
 import numpy as np
@@ -12,7 +10,7 @@ import torch
 import torch.nn.functional as F
 from torchvision.transforms import ToPILImage, ToTensor
 from torchvision.utils import make_grid
-from pytorch_pretrained_biggan import (BigGAN, truncated_noise_sample, one_hot_from_names, save_as_images) # install it from huggingface GR
+from pytorch_pretrained_biggan import (BigGAN, truncated_noise_sample, one_hot_from_names, save_as_images)
 from core.utils.CNN_scorers import TorchScorer
 from core.utils.GAN_utils import BigGAN_wrapper, upconvGAN, loadBigGAN
 from core.utils.grad_RF_estim import grad_RF_estimate, gradmap2RF_square
@@ -20,20 +18,21 @@ from core.utils.layer_hook_utils import get_module_names, layername_dict, regist
 from core.utils.Optimizers import CholeskyCMAES, HessCMAES, ZOHA_Sphere_lr_euclid
 from core.utils.plot_utils import saveallforms, save_imgrid
 #%%
-# if sys.platform == "linux":
-#     # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
-#     # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
-#     # Hdir_fc6 = r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
-#     # O2 path interface
-#     scratchdir = "/n/scratch3/users/b/biw905"  # os.environ['SCRATCH1']
-#     rootdir = join(scratchdir, "GAN_Evol_cmp")
-#     Hdir_BigGAN = join("/home/biw905/Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
-#     Hdir_fc6 = join("/home/biw905/Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
-# else:
-#     # rootdir = r"E:\OneDrive - Washington University in St. Louis\BigGAN_Optim_Tune_tmp"
-#     rootdir = r"D:\Cluster_Backup\GAN_Evol_cmp" #r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
-#     Hdir_BigGAN = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\BigGAN\H_avg_1000cls.npz"
-#     Hdir_fc6 = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\fc6GAN\Evolution_Avg_Hess.npz"
+if sys.platform == "linux":
+    # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
+    # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
+    # Hdir_fc6 = r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
+    # O2 path interface
+    scratchdir = "/n/scratch3/users/b/biw905"  # os.environ['SCRATCH1']
+    # rootdir = join(scratchdir, "GAN_Evol_cmp")
+    rootdir = join(scratchdir, "GAN_Evol_Dissection")
+    Hdir_BigGAN = join("/home/biw905/Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
+    Hdir_fc6 = join("/home/biw905/Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
+else:
+    rootdir = r"F:\insilico_exps\GAN_Evol_Dissection"
+    Hdir_BigGAN = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\BigGAN\H_avg_1000cls.npz"
+    Hdir_fc6 = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\fc6GAN\Evolution_Avg_Hess.npz"
+
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
@@ -46,27 +45,9 @@ parser.add_argument("--steps", type=int, default=100, help="")
 parser.add_argument("--reps", type=int, default=2, help="")
 parser.add_argument("--RFresize", type=bool, default=False, help="")
 args = parser.parse_args() # ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
-# args = parser.parse_args(["--net", "alexnet-eco-064", "--layer", ".classifier.Linear6", "--G", "fc6", "--optim", "CholCMA","--chans",'131','132','--steps','100',"--reps",'4'])
-# args = parser.parse_args(["--net", "alexnet-eco-064", "--layer", ".classifier.Linear6", "--G", "BigGAN", "--optim", "CholCMA","--chans",'131','132','--steps','100',"--reps",'4'])
-# args = parser.parse_args(["--net", "alexnet-eco-080_silence_0.01_weights", "--layer", ".classifier.Linear6", "--G", "BigGAN", "--optim", "CholCMA","--chans",'131','132','--steps','100',"--reps",'4'])
 #%%
 """with a correct cmaes or initialization, BigGAN can match FC6 activation."""
-# Folder to save
-rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 
-# GR add params for running it locally and interactively
-# from easydict import EasyDict as edict
-# args = edict()
-# args.net = "resnet50"
-# args.layer = ".layer3"
-# args.G = "fc6"
-# args.batch = 5
-# args.steps = 100
-# args.reps = 10
-# args.optim = ["CholCMA",]
-# args.RFresize = True
-# args.chans = [100,102]
-# batch = args.batch
 #%% Select GAN
 def load_GAN(name):
     if name == "BigGAN":
@@ -286,9 +267,8 @@ def visualize_trajectory(scores_all, generations, codes_arr=None, show=False, ti
 
 G = load_GAN(args.G)
 Hdata = load_Hessian(args.G)
-#%% Select vision model as scorer
 scorer = TorchScorer(args.net)
-
+#%% Select vision model as scorer
 # net = tv.alexnet(pretrained=True)
 # scorer.select_unit(("alexnet", "fc6", 2))
 # imgs = G.visualize(torch.randn(3, 256).cuda()).cpu()
@@ -298,35 +278,6 @@ method_col = args.optim
 # optimizer_col = [label2optimizer(methodlabel, np.random.randn(1, 256), GAN=args.G) for methodlabel in method_col]
 #%% Set recording location and image size and position.
 pos_dict = {"conv5": (7, 7), "conv4": (7, 7), "conv3": (7, 7), "conv2": (14, 14), "conv1": (28, 28)}
-
-# Get the center position of the feature map.
-# if not "fc" in args.layer and not ".classifier" in args.layer:
-#     # if not args.net in layername_dict:  # TODO:Check the logic
-#         module_names, module_types, module_spec = get_module_names(scorer.model, input_size=(3, 227, 227), device="cuda")
-#         layer_key = [k for k, v in module_names.items() if v == args.layer][0]
-#         feat_outshape = module_spec[layer_key]['outshape']
-#         assert len(feat_outshape) == 3  # fc layer will fail
-#         cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
-#     # else:
-#     #     cent_pos = pos_dict[args.layer]
-# else:
-#     cent_pos = None
-# 
-# print("Target setting network %s layer %s, center pos"%(args.net, args.layer), cent_pos)
-# # rf Mapping,
-# if args.RFresize and not "fc" in args.layer:
-#     print("Computing RF by direct backprop: ")
-#     gradAmpmap = grad_RF_estimate(scorer.model, args.layer, (slice(None), *cent_pos), input_size=(3, 227, 227),
-#                                   device="cuda", show=False, reps=30, batch=1)
-#     Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
-#     corner = (Xlim[0], Ylim[0])
-#     imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
-# else:
-#     imgsize = (256, 256)
-#     corner = (0, 0)
-#     Xlim = (corner[0], corner[0] + imgsize[0])
-#     Ylim = (corner[1], corner[1] + imgsize[1])
-
 input_size = (3, 227, 227)
 cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, args.layer,
                                           input_size=input_size, device="cuda")
@@ -334,7 +285,7 @@ print("Target setting network %s layer %s, center pos" % (args.net, args.layer),
 print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
 #%% Start iterating through channels.
 for unit_id in range(args.chans[0], args.chans[1]):
-    if "fc" in args.layer or "classifier" in args.layer or cent_pos is None: # cent_pos none from Binxu new function
+    if "fc" in args.layer or cent_pos is None:
         unit = (args.net, args.layer, unit_id)
         savedir = join(rootdir, r"%s_%s_%d" % unit[:3])
     else:
@@ -384,6 +335,8 @@ for unit_id in range(args.chans[0], args.chans[1]):
                 scores_all.extend(list(scores))
                 generations.extend([i] * len(scores))
                 best_imgs.append(imgs[scores.argmax(),:,:,:])
+                mtg = ToPILImage()(make_grid(imgs, nrow=8))
+                mtg.save(join(savedir, "imggen%s_%05d_block%02d.jpg" % (methodlab, RND, i, )))
 
             codes_all = np.concatenate(tuple(codes_all), axis=0)
             scores_all = np.array(scores_all)
@@ -392,11 +345,9 @@ for unit_id in range(args.chans[0], args.chans[1]):
             mtg_exp.save(join(savedir, "besteachgen%s_%05d.jpg" % (methodlab, RND,)))
             mtg = ToPILImage()(make_grid(imgs, nrow=7))
             mtg.save(join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
-            # save_imgrid(imgs, join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())), nrow=7)
-            # save_imgrid(best_imgs, join(savedir, "bestgen%s_%05d.jpg" % (methodlab, RND, )), nrow=10)
             if args.G == "fc6":
                 np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)),
-                 generations=generations, scores_all=scores_all, codes_fin=codes_all[-80:, :])
+                 generations=generations, scores_all=scores_all, codes_fin=codes_all)
             else:
                 np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)),
                  generations=generations, scores_all=scores_all, codes_all=codes_all)
@@ -404,29 +355,3 @@ for unit_id in range(args.chans[0], args.chans[1]):
                 join(savedir, "traj%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
 
 
-#%%
-def BigGAN_evol_exp(scorer, optimizer, G, steps=100, RND=None, label="", init_code=None, batchsize=20):
-    init_code = np.concatenate((fixnoise, np.zeros((1, 128))), axis=1)
-    # optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2)
-    new_codes = init_code + np.random.randn(25, 256) * 0.06
-    scores_all = []
-    generations = []
-    for i in tqdm.trange(steps, desc="CMA steps"):
-        imgs = G.visualize_batch_np(new_codes, B=batchsize)
-        latent_code = torch.from_numpy(np.array(new_codes)).float()
-        scores = scorer.score_tsr(imgs)
-        print("step %d dsim %.3f (%.3f) (norm %.2f noise norm %.2f)" % (
-            i, scores.mean(), scores.std(), latent_code[:, 128:].norm(dim=1).mean(),
-            latent_code[:, :128].norm(dim=1).mean()))
-        new_codes = optimizer.step_simple(scores, new_codes, )
-        scores_all.extend(list(scores))
-        generations.extend([i] * len(scores))
-
-    scores_all = np.array(scores_all)
-    generations = np.array(generations)
-    mtg = ToPILImage()(make_grid(imgs, nrow=7))
-    mtg.save(join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
-    np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)), generations=generations, scores_all=scores_all,
-             codes_fin=latent_code.cpu().numpy())
-    visualize_trajectory(scores_all, generations, title_str=methodlab).savefig(
-        join(savedir, "traj%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
