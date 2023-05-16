@@ -165,25 +165,40 @@ class TorchScorer:
                 self.model = models.resnet101(pretrained=True)
                 self.inputsize = (3, imgpix, imgpix)
                 self.layername = None
-            elif "resnet50" in model_name:
-                if "resnet50-face" in model_name:  # resnet trained on vgg-face dataset.
-                    self.model = models.resnet50(pretrained=False, num_classes=8631)
-                    if model_name == "resnet50-face_ft":
-                        self.model.load_state_dict(torch.load(join(torchhome, "resnet50_ft_weight.pt")))
-                    elif model_name == "resnet50-face_scratch":
-                        self.model.load_state_dict(torch.load(join(torchhome, "resnet50_scratch_weight.pt")))
-                    else:
-                        raise NotImplementedError("Feasible names are resnet50-face_scratch, resnet50-face_ft")
+            # elif "resnet50" in model_name:
+            #     if "resnet50-face" in model_name:  # resnet trained on vgg-face dataset.
+            #         self.model = models.resnet50(pretrained=False, num_classes=8631)
+            #         if model_name == "resnet50-face_ft":
+            #             self.model.load_state_dict(torch.load(join(torchhome, "resnet50_ft_weight.pt")))
+            #         elif model_name == "resnet50-face_scratch":
+            #             self.model.load_state_dict(torch.load(join(torchhome, "resnet50_scratch_weight.pt")))
+            #         else:
+            #             raise NotImplementedError("Feasible names are resnet50-face_scratch, resnet50-face_ft")
+            #     else:
+            #         self.model = models.resnet50(pretrained=True)
+            #         if model_name in ["resnet50_linf_8", "resnet50_linf8"]:  # robust version of resnet50.
+            #             self.model.load_state_dict(torch.load(join(torchhome, "imagenet_linf_8_pure.pt")))
+            #         elif model_name == "resnet50_linf_4":
+            #             self.model.load_state_dict(torch.load(join(torchhome, "imagenet_linf_4_pure.pt")))
+            #         elif model_name == "resnet50_l2_3_0":
+            #             self.model.load_state_dict(torch.load(join(torchhome, "imagenet_l2_3_0_pure.pt")))
+            #         else:
+            #             print("use the default resnet50 weights")
+            #     self.inputsize = (3, imgpix, imgpix)
+            #     self.layername = None
+            elif "resnet50" in model_name:  # GR alternative loading, not sure if same weights used by BW
+                self.model = models.resnet50(pretrained=True)
+                robust_resnet_dict = {
+                               "resnet50_linf8": "resnet50_linf_eps8.0.pt",
+                               "resnet50_linf4": "resnet50_linf_eps4.0.pt",
+                               "resnet50_linf2": "resnet50_linf_eps2.0.pt",
+                               "resnet50_linf1": "resnet50_linf_eps1.0.pt",
+                               "resnet50_linf0.5": "resnet50_linf_eps0.5.pt"
+                               }
+                if model_name in robust_resnet_dict.keys():  # robust version of resnet50.
+                    self.model.load_state_dict(torch.load(join(torchhome, robust_resnet_dict[model_name])))
                 else:
-                    self.model = models.resnet50(pretrained=True)
-                    if model_name in ["resnet50_linf_8", "resnet50_linf8"]:  # robust version of resnet50.
-                        self.model.load_state_dict(torch.load(join(torchhome, "imagenet_linf_8_pure.pt")))
-                    elif model_name == "resnet50_linf_4":
-                        self.model.load_state_dict(torch.load(join(torchhome, "imagenet_linf_4_pure.pt")))
-                    elif model_name == "resnet50_l2_3_0":
-                        self.model.load_state_dict(torch.load(join(torchhome, "imagenet_l2_3_0_pure.pt")))
-                    else:
-                        print("use the default resnet50 weights")
+                    print("use the default resnet50 weights")
                 self.inputsize = (3, imgpix, imgpix)
                 self.layername = None
             elif model_name == "cornet_s":
