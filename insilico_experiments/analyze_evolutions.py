@@ -481,8 +481,10 @@ G = load_GAN("BigGAN")
 rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 rootdir = r"M:\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 layer_str = '.classifier.Linear6'
-unit_idx = 78  # 13, 373, 14, 12, 72, 66, 78
+layer_str = '.Linearfc'
+unit_idx = 373  # 13, 373, 14, 12, 72, 66, 78
 unit_pattern = 'alexnet-eco-080.*%s_%s' % (layer_str, unit_idx)
+unit_pattern = 'resnet50_%s_%s' % (layer_str, unit_idx)
 perturbation_pattern = '_kill_topFraction_'
 # unit_pattern += perturbation_pattern
 # %%
@@ -677,7 +679,7 @@ plt.show()
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 
-plot_weighted_im_mean = False
+plot_weighted_im_mean = True
 
 fig = plt.figure(figsize=(20., 8.))
 grid = ImageGrid(fig, 111,  # similar to subplot(111)
