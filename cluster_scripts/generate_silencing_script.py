@@ -1,7 +1,13 @@
 import numpy as np
 
-channel = 78
-base_params = "--net alexnet-eco-080 --layer .classifier.Linear6 --optim CholCMA --reps 10"
+channel = 373
+# base_params = "--net alexnet-eco-080 --layer .classifier.Linear6 --optim CholCMA --reps 10"
+# base_params = "--net resnet50 --layer .Linearfc --optim CholCMA --reps 10"
+# base_params = "--net resnet50_linf0.5 --layer .Linearfc --optim CholCMA --reps 10"
+# base_params = "--net resnet50_linf1 --layer .Linearfc --optim CholCMA --reps 10"
+# base_params = "--net resnet50_linf2 --layer .Linearfc --optim CholCMA --reps 10"
+# base_params = "--net resnet50_linf4 --layer .Linearfc --optim CholCMA --reps 10"
+base_params = "--net resnet50_linf8 --layer .Linearfc --optim CholCMA --reps 10"
 fc6_gan = "--G fc6"
 big_gan = "--G BigGAN"
 channels = " ".join(["--chans", str(channel), str(channel + 1)])
