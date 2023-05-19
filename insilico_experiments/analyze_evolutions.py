@@ -20,6 +20,9 @@ from scipy.stats import bootstrap
 from scipy.stats import pearsonr
 import seaborn as sns
 from scipy.stats import gaussian_kde as kde
+from pytorch_pretrained_biggan import (BigGAN, truncated_noise_sample, one_hot_from_names,
+                                       save_as_images)  # install it from huggingface GR
+from core.utils.GAN_utils import BigGAN_wrapper, upconvGAN, loadBigGAN
 
 
 def load_folder_evolutions(data_dir_path):
@@ -357,6 +360,8 @@ def load_GAN(name):
     return G
 
 
+G_fc6 = load_GAN("fc6")
+G = load_GAN("BigGAN")
 # %%
 def extrac_top_scores_and_images_from_dir(artificial_unit_dir, overwrite_existing=False):
     """Extract the top scores and image from each evolution in the given directory
@@ -410,7 +415,7 @@ def save_images_manipulated_by_scores(score: list, im_tensor: torch.Tensor, fig_
     unsorted_grid.save(join(fig_dir_path, "unsorted_grid__%s.jpg" % (os.path.split(artificial_unit_dir)[1])))
     unsorted_grid.show()
 
-    # weigthed average
+    # weigthed average # TODO rescale image to 0-1 range to avoid artifacts
     weights = torch.tensor(score).float()
     weighted_mean_image = ToPILImage()((weights.reshape((-1, 1, 1, 1)) * im_tensor).sum(axis=0) / weights.sum())
     # weighted_mean_image = ToPILImage()((weights.reshape((-1, 1, 1, 1)) * im_tensor).mean(axis=0))
