@@ -480,11 +480,14 @@ G = load_GAN("BigGAN")
 
 rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 rootdir = r"M:\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
+rootdir = r"C:\Users\gio\Data"  # since my home folder got full
 layer_str = '.classifier.Linear6'
-layer_str = '.Linearfc'
-unit_idx = 373  # 13, 373, 14, 12, 72, 66, 78
+# layer_str = '.Linearfc'
+unit_idx = 373#398# imagenet 373  # ecoset 13, 373, 14, 12, 72, 66, 78
 unit_pattern = 'alexnet-eco-080.*%s_%s' % (layer_str, unit_idx)
-unit_pattern = 'resnet50_%s_%s' % (layer_str, unit_idx)
+unit_pattern = 'alexnet.*%s_%s' % (layer_str, unit_idx)
+# unit_pattern = 'resnet50_%s_%s' % (layer_str, unit_idx)
+# unit_pattern = 'resnet50_linf0.5_%s_%s' % (layer_str, unit_idx)
 perturbation_pattern = '_kill_topFraction_'
 # unit_pattern += perturbation_pattern
 # %%
@@ -679,7 +682,8 @@ plt.show()
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 
-plot_weighted_im_mean = True
+# plot_weighted_im_mean = True
+plot_weighted_im_mean = False
 
 fig = plt.figure(figsize=(20., 8.))
 grid = ImageGrid(fig, 111,  # similar to subplot(111)
@@ -745,7 +749,7 @@ for i_cond, (scores, images) in enumerate(zip(perturbation_data_dict['scores'], 
     # print([scores[i] for i in list_argsort(scores, reverse=True)[:9]])
     # select top9 activating images, and convert to image grid
     top9_im_grid = get_top_n_im_grid(scores, images, top_n=9)
-top9_im_grid.show()
+# top9_im_grid.show()
 
 #%%
 # To get top scoring images, but maybe more efficient to just use the lists and index back as below
@@ -808,8 +812,10 @@ def jitter(values, scale):
 
 # fig, ax = plt.subplots(figsize=(8,6))
 # df.groupby('type').plot(x='strength', y='scores', kind='scatter', ax=ax)
-ax_line = sns.lineplot(data=df, x='strength', y='scores', hue='type', errorbar=('ci', 95), markers='o')
-ax_scatter = sns.scatterplot(data=df, x=jitter(df.strength, 0.008), y='scores', hue='type', alpha=0.5)
+ax_line = sns.lineplot(data=df, x='strength', y='scores', hue='type', errorbar=('ci', 95), markers='o',
+                       hue_order=['abs', 'inh', 'exc', 'none'])
+ax_scatter = sns.scatterplot(data=df, x=jitter(df.strength, 0.008), y='scores', hue='type', alpha=0.5,
+                             hue_order=['abs', 'inh', 'exc', 'none'])
 # sns.stripplot(df, x='strength', y='scores', hue='type', alpha=0.5) # this makes x axis categorical
 # sns.violinplot(df, x='strength', y='scores', hue='type', inner='points')
 # sns.violinplot(data=df, x="strength", y="scores", inner="points", hue='type')
