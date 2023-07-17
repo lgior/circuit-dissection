@@ -1,16 +1,19 @@
 import numpy as np
 
-channel = 373
+channel = 701#373#398 # abacus # 373 # imagenette: 0, 217, 482, 491, 497, 566, 569, 571, 574, 701
+channel = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
+# base_params = "--net alexnet --layer .classifier.Linear6 --optim CholCMA --reps 10"
 # base_params = "--net alexnet-eco-080 --layer .classifier.Linear6 --optim CholCMA --reps 10"
 # base_params = "--net resnet50 --layer .Linearfc --optim CholCMA --reps 10"
-# base_params = "--net resnet50_linf0.5 --layer .Linearfc --optim CholCMA --reps 10"
+base_params = "--net resnet50_linf0.5 --layer .Linearfc --optim CholCMA --reps 10"
 # base_params = "--net resnet50_linf1 --layer .Linearfc --optim CholCMA --reps 10"
 # base_params = "--net resnet50_linf2 --layer .Linearfc --optim CholCMA --reps 10"
 # base_params = "--net resnet50_linf4 --layer .Linearfc --optim CholCMA --reps 10"
-base_params = "--net resnet50_linf8 --layer .Linearfc --optim CholCMA --reps 10"
+# base_params = "--net resnet50_linf8 --layer .Linearfc --optim CholCMA --reps 10"
 fc6_gan = "--G fc6"
 big_gan = "--G BigGAN"
-channels = " ".join(["--chans", str(channel), str(channel + 1)])
+# channels = " ".join(["--chans", str(channel), str(channel + 1)])
+channels = " ".join(["--chans", " ".join(map(str, channel))])
 
 # strengths = [-0.2, -0.3, -0.4, -0.5, -0.8]
 # strengths = [0.4, 0.5, -0.7, 0.9, -0.9, -1.0]
