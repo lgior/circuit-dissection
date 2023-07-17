@@ -63,11 +63,14 @@ print(args)
 # args = parser.parse_args(["--net", "alexnet-eco-080", "--layer", ".classifier.Linear6", "--G", "BigGAN", "--optim", "CholCMA","--chans",'131','132','--steps','100',"--reps",'10', "--perturb", "kill_topFraction_abs_in_weight_0.99"])
 # args = parser.parse_args(["--net", "alexnet-eco-080", "--layer", ".classifier.ReLU5", "--G", "fc6", "--optim", "CholCMA","--chans",'1385','1386','--steps','100',"--reps",'10'])
 # args = parser.parse_args(["--net", "alexnet-eco-080", "--layer", ".classifier.ReLU5", "--G", "BigGAN", "--optim", "CholCMA","--chans",'1385','1386','--steps','100',"--reps",'10'])
+# args = parser.parse_args(["--net", "resnet50_linf8", "--layer", ".Linearfc", "--G", "fc6", "--optim", "CholCMA","--chans",'373','374','--steps','100',"--reps",'10', "--perturb", "minimize_kill_topFraction_in_weight_1"])
+# args = parser.parse_args(["--net", "resnet50_linf8", "--layer", ".Linearfc", "--G", "BigGAN", "--optim", "CholCMA","--chans",'373','374','--steps','100',"--reps",'10', "--perturb", "minimize_kill_topFraction_in_weight_1"])
 #%%
 """with a correct cmaes or initialization, BigGAN can match FC6 activation."""
 # Folder to save
 if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
     rootdir = r"M:\Data"
+    rootdir = r"C:\Users\gio\Data"  # personal folder gets full at 50GB
 else:
     rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 
@@ -316,7 +319,8 @@ else:
 print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
 
 #%% Start iterating through channels.
-for unit_id in range(args.chans[0], args.chans[1]):
+# for unit_id in range(args.chans[0], args.chans[1]): # commented out to test running a list of noncontiguous channels
+for unit_id in args.chans:
     if "fc" in args.layer or "classifier" in args.layer:
         unit = (args.net, args.layer, unit_id)
     else:
@@ -333,6 +337,13 @@ for unit_id in range(args.chans[0], args.chans[1]):
         silencing_fraction = float(re.search(r'kill_topFraction_in_weight_(.*)', args.perturb).group(1))
         target_module, original_weights, weights_silenced = \
             kill_fc_top_in_fraction(scorer.model, args.layer, unit_id, silencing_fraction)
+        if re.search(r'minimize.*', args.perturb) and silencing_fraction > 0:
+            with torch.no_grad():
+                temp_weights = target_module.weight.detach().cpu().numpy()
+                temp_weights[unit_id, :] *= -1
+                device = torch.device("cuda" if original_weights.is_cuda else "cpu")
+                with torch.no_grad():
+                    target_module.weight = torch.nn.Parameter(torch.from_numpy(temp_weights).float().to(device))
     elif re.search(r'kill_topFraction_abs_in_weight_(.*)', args.perturb):
         silencing_fraction = float(re.search(r'kill_topFraction_abs_in_weight_(.*)', args.perturb).group(1))
         target_module, original_weights, weights_silenced = \
