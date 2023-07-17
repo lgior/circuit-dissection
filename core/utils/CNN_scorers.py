@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 import socket
 import timm
+import re
+import random
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
@@ -134,7 +136,6 @@ class TorchScorer:
                 self.layername = None if rawlayername else layername_dict[model_name]
                 self.inputsize = (3, imgpix, imgpix)
             elif "alexnet-eco" in model_name:
-                import re
                 self.model = models.__dict__['alexnet'](pretrained=False, num_classes=565)
                 if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
                     checkpoint_dir = r"M:\Code\training-checkpoints"
@@ -187,7 +188,18 @@ class TorchScorer:
             #     self.inputsize = (3, imgpix, imgpix)
             #     self.layername = None
             elif "resnet50" in model_name:  # GR alternative loading, not sure if same weights used by BW
-                self.model = models.resnet50(pretrained=True)
+                if "resnet50-random" in model_name:
+                    # parse the integer after the string "random" in the model name
+                    random_seed = int(re.findall(r'\d+$', model_name)[0])
+                    torch.backends.cudnn.deterministic = True
+                    random.seed(random_seed)
+                    torch.manual_seed(random_seed)
+                    torch.cuda.manual_seed(random_seed)
+                    np.random.seed(random_seed)
+                    # import random initialized resnet50
+                    self.model = models.resnet50(pretrained=False)
+                else:
+                    self.model = models.resnet50(pretrained=True)
                 robust_resnet_dict = {
                                "resnet50_linf8": "resnet50_linf_eps8.0.pt",
                                "resnet50_linf4": "resnet50_linf_eps4.0.pt",
