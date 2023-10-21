@@ -29,6 +29,10 @@ from insilico_experiments import analyze_evolutions as anevo
 import matplotlib as mpl
 import itertools
 import seaborn as sns
+import pickle
+from functools import reduce
+from torchmetrics.functional.pairwise import pairwise_cosine_similarity
+from tqdm import tqdm
 #%%
 # if sys.platform == "linux":
 #     # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
@@ -124,57 +128,663 @@ def resize_and_pad(imgs, corner, size):
     rsz_img = F.interpolate(imgs, size=size, align_corners=True, mode="bilinear")
     pad_img[:, :, corner[0]:corner[0]+size[0], corner[1]:corner[1]+size[1]] = rsz_img
     return pad_img
+
 #%%
+
+
+def get_perturbation_data_dict(rootdir, unit_data_dirs):
+    perturbation_data_dict = {key: [] for key in ['type', 'strength', 'scores', 'images']}
+
+    for data_dir in unit_data_dirs:
+        if 'kill' in data_dir:
+            perturbation_fraction = float(re.search(r'.*_([\-\.\d]+)?', data_dir).group(1))
+            perturbation_type = 'abs' if 'abs' in data_dir else 'exc' if perturbation_fraction >= 0 else 'inh'
+        else:
+            perturbation_fraction = 0
+            perturbation_type = 'none'
+        perturbation_data_dict['strength'].append(abs(perturbation_fraction))
+        perturbation_data_dict['type'].append(perturbation_type)
+
+        max_scores, max_im_tensor = anevo.extrac_top_scores_and_images_from_dir(join(rootdir, data_dir))
+        print("%s has %d scores" % (data_dir, len(max_scores)))
+
+        perturbation_data_dict['scores'].append(max_scores)
+        perturbation_data_dict['images'].append(max_im_tensor)
+    return perturbation_data_dict
+
+
+#%%
+
+figures_dir = os.path.join('C:', 'Users', 'gio', 'Data', 'figures', 'silencing')
+os.makedirs(figures_dir, exist_ok=True)
 
 # TODO refactor following repeated code into another function or method
 rootdir = r"C:\Users\gio\Data"  # since my home folder got full
+
+# check if a folder named preprocessed_data exists, if not create it
+preprocessed_data_dir_path = join(rootdir, 'preprocessed_data')
+if not os.path.exists(preprocessed_data_dir_path):
+    os.makedirs(preprocessed_data_dir_path)
+
+net_str = 'vgg16'
+net_str = 'alexnet'  # 'resnet50', 'alexnet-eco-080'
+net_str = 'resnet50'  # 'resnet50', 'alexnet-eco-080'
+net_str = 'resnet50_linf2'
+
+if any(s in net_str for s in ['alexnet-eco', 'resnet50']):
+    layer_str = '.Linearfc'  # for resnet50 and alexnet-eco-080
+else:
+    layer_str = '.classifier.Linear6'  # for alexnet
+
+print(f'Possible units to analyze: {anevo.get_recorded_unit_indices(rootdir, net_str, layer_str)}')
+
+perturbation_regex = r'.*(_kill.*)$'
+perturbation_pattern = '_kill_topFraction_'
+
+full_experiment_suffixes = anevo.get_complete_experiment_list()
+silencing_experiment_suffixes = []
+for suffix in full_experiment_suffixes:
+    if 'kill' in suffix:
+        silencing_experiment_suffixes.extend(full_experiment_suffixes[suffix])
+
+
+complete_unit_indices = anevo.get_complete_experiment_units(
+    rootdir, net_str, layer_str, perturbation_pattern, perturbation_regex, silencing_experiment_suffixes
+)
+complete_unit_index_list = [key for key, value in complete_unit_indices.items() if value is None]
+
+imagenette_units = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
+
+assert set(imagenette_units + [373]).issubset(set(complete_unit_index_list))
+#%%
+
+preprocess_data_to_file = False
+
+if preprocess_data_to_file:
+
+    columns = ['type', 'strength', 'scores']  # 'images' is too big to be stored in a dataframe
+    df_dict = {}
+    image_dict = {}
+
+    for unit in tqdm(complete_unit_index_list):
+        print(f'Analyzing unit {unit}')
+        # Get the directories of all the experiments for a given unit
+        unit_data_dirs = anevo.get_unit_data_dirs(rootdir, net_str, layer_str, unit,
+                                                  experiment_pattern=perturbation_pattern)
+
+        # Extract the top image and score per evolution experiment inside a folder, dimension n_folders x m_evolutions
+        perturbation_data_dict = get_perturbation_data_dict(rootdir, unit_data_dirs)
+        df = pd.DataFrame.from_dict({key: perturbation_data_dict[key] for key in columns})
+        df.reset_index(names='list_index')
+        # rename column score to score + unit
+        unit_scores_str = f'scores_{unit}'
+        df = df.rename(columns={'scores': unit_scores_str})
+        df_dict[unit] = df
+        image_dict[unit] = perturbation_data_dict['images']
+
+
+    # save image_dict and df_list to file in rootdir named after net_str and layer_str
+
+    file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
+    with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
+        pickle.dump(df_dict, f)
+
+    file_name = f'{net_str}_{layer_str}_images_dict.pkl'
+    with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
+        pickle.dump(image_dict, f)
+
+    #%%
+# load dataframes and images from file
+file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
+with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
+    df_dict = pickle.load(f)
+
+
+#%%
+def plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=None, params_dict=None):
+
+    with plt.rc_context(params_dict):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(5, 5), dpi=300)
+        # Plot the strength of response vs strength of input perturbation
+        # fig, ax = plt.subplots(figsize=(8,6))
+        # df.groupby('type').plot(x='strength', y='scores', kind='scatter', ax=ax)
+        # set the current axis to ax
+        plt.sca(ax)
+        score_name = [column for column in df.columns if 'score' in column][0]
+        ax_line = sns.lineplot(data=df, x='strength', y=score_name, hue='type', errorbar=('ci', 95), markers='o',
+                               hue_order=['abs', 'inh', 'exc', 'none'],
+                               palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'],
+                               lw=4, err_kws={'edgecolor': None})
+        ax_scatter = sns.scatterplot(data=df, x=anevo.jitter(df.strength, 0.008), y=score_name, hue='type', alpha=0.5,
+                                     hue_order=['abs', 'inh', 'exc', 'none'],
+                                     palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'],
+                                     ec='w', s=80)
+        # sns.stripplot(df, x='strength', y='scores', hue='type', alpha=0.5) # this makes x axis categorical
+        # sns.violinplot(df, x='strength', y='scores', hue='type', inner='points')
+        # sns.violinplot(data=df, x="strength", y="scores", inner="points", hue='type')
+        # sns.violinplot(data=df[df.type == 'abs'], x="strength", y="scores", inner="points")
+        # sns.violinplot(data=df, x='strength', y="scores", hue='type', inner="points", face=0.9)
+        h_leg_scatter, label_scatter = ax_scatter.get_legend_handles_labels()
+        plt.legend(handles=list(zip(h_leg_scatter[:-4], h_leg_scatter[-4:])), labels=label_scatter[:-4],
+                   labelspacing=0.2,  handlelength=1,
+                   bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        # plt.legend()
+
+        plt.title(f'{net_str} {layer_str} \n unit {unit}')
+        # ax.set_title('Testing', font=fpath)
+        # prop = fm.FontProperties(fname=f.name)
+        # ax.set_title('this is a special font:\n%s' % github_url, fontproperties=prop)
+        plt.xlabel('Silencing strength')
+        plt.ylabel('Response (a.u.)')
+        # plt.ylim([0, 1])
+        # ax.set_xticks([0.2, 0.4, 0.6, 0.8, 1.0])
+        # ax.set_yticks([0, 0.5, 1])
+        # get current figure
+        # fig.tight_layout()
+        # plt.show()
+
+#%%
+params = {
+    'font.size': 20,
+    'axes.labelsize': 20,
+    'axes.titlesize': 14,
+    'figure.titlesize': 14,
+    'figure.labelsize': 14,
+    'font.family': 'Arial',
+    'legend.fontsize': 10,
+    'xtick.labelsize': 16,
+    'ytick.labelsize': 16,
+    'text.usetex': False
+}
+# make a grid of 4x3 axes for plotting, one for each unit
+with plt.rc_context(params):
+    fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(14, 9), dpi=300, sharex=True, sharey=True)
+
+for ii, unit in enumerate(complete_unit_index_list):
+    # now preprocess the dataframe to extract maximum scores and images
+    df = df_dict[unit]
+    unit_scores_str = f'scores_{unit}'
+    df = df.explode([unit_scores_str])
+    df[unit_scores_str] = df[unit_scores_str].astype("float")
+    df.type = df.type.astype("string")
+    df = df.reset_index(names='list_index')
+    # with plt.rc_context(params):
+    plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=axes[ii // 4, ii % 4], params_dict=params)
+
+fig.tight_layout()
+# save figure
+fig_name = f'{net_str}_{layer_str}_scores_vs_silencing_strength.png'
+fig.savefig(join(figures_dir, fig_name), dpi=300)
+fig_name = f'{net_str}_{layer_str}_scores_vs_silencing_strength.pdf'
+fig.savefig(join(figures_dir, fig_name), dpi=300)
+plt.show()
+
+
+#%%
+
+file_name = f'{net_str}_{layer_str}_images_dict.pkl'
+with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
+    image_dict = pickle.load(f)
+
+
+#%%
+
+network_list = ['alexnet',
+                'resnet50', 'resnet50_linf0.5', 'resnet50_linf1', 'resnet50_linf2', 'resnet50_linf4', 'resnet50_linf8']
+# net = 'alexnet'
+
+if preprocess_data_to_file:
+    for inet, net in enumerate(network_list):
+        scorer = TorchScorer(net)
+
+        for ii, unit in enumerate(complete_unit_index_list):
+            # now preprocess the dataframe to extract maximum scores and images
+            df = df_dict[unit]
+            unit_scores_str = f'scores_{unit}'
+            # copy df not to modify the original
+            if ii == 0 and inet == 0:
+                df_rsa = df.copy()
+                df_rsa.drop(columns=[unit_scores_str], inplace=True)
+                df_rsa.reset_index(inplace=True)
+                # set index to original index, type and strength
+                df_rsa = df_rsa.set_index(['index', 'type', 'strength'])
+                # create a multiindex for the columns
+                net_columns = pd.MultiIndex.from_tuples([(unit, net) for net in network_list], names=['unit', 'test_network'])
+                df_rsa = df_rsa.reindex(columns=net_columns)
+            else:
+                # add the new column to the existing dataframe
+                df_rsa[unit, net] = np.nan
+
+
+            # df[unit_scores_str] = df[unit_scores_str].astype("float")
+            df.type = df.type.astype("string")
+
+            image_list = image_dict[unit]
+
+            control_tensor = image_list[np.where(df.type == 'none')[0][0]]  # here one image is from one evolution
+            control_tensor = control_tensor.to(torch.device('cuda:0'))
+            control_output = scorer.model(control_tensor)
+            control_output = torch.nn.functional.softmax(control_output, dim=1)
+
+            for index, row in df.iterrows():
+                # check that df type and strength of the row match the ones of df_rsa
+                multiindex = (index, row.type, row.strength)
+                # print(df_rsa.loc[multiindex, (unit, net)])
+                # assert check is not needed if already addressing by multiindex
+                # assert (df_rsa.loc[index, 'type'] == row.type) and (df_rsa.loc[index, 'strength'] == row.strength)
+                # get the image list from image_list corresponding to the list_index
+                silenced_images_tensor = image_list[index].to(torch.device('cuda:0'))
+                silenced_output = scorer.model(silenced_images_tensor)
+                # compute softmax
+                silenced_output = torch.nn.functional.softmax(silenced_output, dim=1)
+                #compute the cosine similarity using torchmetrics
+                cosine_similarity = pairwise_cosine_similarity(silenced_output, control_output)
+                # extract the upper triangular part of the matrix
+                cosine_similarity = torch.triu(cosine_similarity, diagonal=1)
+                # compute the mean of the cosine similarity
+                mean_cosine_similarity = torch.mean(cosine_similarity).detach().cpu().numpy()
+                # add the mean cosine similarity to the dataframe in a new hierarchical column with level 0 unit, and
+                # level 1 mean_cosine_similarity
+                df_rsa.loc[multiindex, (unit, net)] = mean_cosine_similarity
+
+        # melt dataframe on columns given by complete_unit_index_list, set new column name to mean_cosine_similarity
+        # df_rsa = df_rsa.melt(id_vars=['type', 'strength'], value_vars=complete_unit_index_list, var_name='unit',
+        #                      value_name=f'mean_cosine_similarity_{net}')
+
+    # save the dataframe
+    file_name = f'rsa_{net_str}_{layer_str}.pkl'
+    df_rsa.to_pickle(join(preprocessed_data_dir_path, file_name))
+
+#%%
+# load the dataframe
+file_name = f'rsa_{net_str}_{layer_str}.pkl'
+df_rsa = pd.read_pickle(join(preprocessed_data_dir_path, file_name))
+#%%
+# recover a dataframe with the mean cosine similarity for each type and strength in a tabular format
+df_rsa_table = df_rsa.stack().stack().reset_index(name='mean_cosine_similarity')
+# average mean_cosine_similarity over the test_network level when grouping by type, strength and unit
+df_rsa_table = df_rsa_table.groupby(['type', 'strength', 'unit']).mean_cosine_similarity.mean().reset_index()
+
+#%%
+# divide the mean_cosine_similarity by the control mean_cosine_similarity
+for group_id, group_data in df_rsa_table.groupby(['unit']):
+    control_mean_cosine_similarity = group_data[group_data.type == 'none'].mean_cosine_similarity.values[0]
+    df_rsa_table.loc[df_rsa_table.unit == group_id, 'norm_mean_cosine_similarity'] = \
+        df_rsa_table.loc[df_rsa_table.unit == group_id, 'mean_cosine_similarity'] / control_mean_cosine_similarity
+
+#%%
+
+    # df_rsa_table.loc[df_rsa_table.unit == unit, 'mean_cosine_similarity'] /= df_rsa_table[df_rsa_table.type == 'none'].mean_cosine_similarity.values.mean()
+#%%
+
+
+# malke the previous cell into a function
+def plot_rsa(ax, df_rsa_table, net_str, layer_str, y_var='mean_cosine_similarity', type_to_plot='all'):
+    # add the docstring
+    """
+    Plot the rsa results in a figure
+    :param ax: axis to plot on
+    :param df_rsa_table: dataframe with the rsa results
+    :param net_str: network name
+    :param layer_str: layer name
+    :param y_var: variable to plot on the y axis, either 'mean_cosine_similarity' or 'norm_mean_cosine_similarity'
+    :param type_to_plot: type of silencing to plot, either 'all', 'inh', 'exc' or 'abs'
+    :return:
+    """
+    # set the plotting axis to ax
+    plt.sca(ax)
+    control_similarities = df_rsa_table[df_rsa_table.type == 'none'][y_var].values
+    # then compute the confidence interval
+    ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+    # plot the mean and confidence interval, without edgecolor
+    plt.fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+    plt.axhline(y=control_similarities.mean(), color='k', linestyle='-', alpha=0.1, lw=3)
+    # plot the cosine similarity vs the silencing strength separately for each type, using seaborn
+    if type_to_plot == 'all':
+        sns.lineplot(data=df_rsa_table, x='strength', y=y_var, hue='type', alpha=0.5, lw=3,
+                     hue_order=['abs', 'inh', 'exc', 'none'],
+                     palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'])
+    else:
+        sns.scatterplot(data=df_rsa_table[df_rsa_table.type == 'none'], x='strength', y=y_var, hue='unit',
+                        ax=ax, palette='tab20', alpha=1, legend=False)
+        sns.lineplot(data=df_rsa_table[df_rsa_table.type == type_to_plot], x='strength', y=y_var, hue='unit',
+                     ax=ax, palette='tab20', alpha=1, lw=3)
+    if y_var == 'norm_mean_cosine_similarity':
+        plt.ylabel('normalized cosine similarity\n(control vs silencing)')
+    else:
+        plt.ylabel('cosine similarity\n(control vs silencing)')
+    plt.xlabel('silencing strength')
+    plt.title(f'{net_str} {layer_str}')
+    # square axes, with unequal aspect ratio
+    plt.gca().set_aspect(1 / plt.gca().get_data_ratio())
+    # move legend outside the plot
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., title='type' if type_to_plot == 'all' else 'unit')
+    # plt.tight_layout()
+    # plt.show()
+
+import matplotlib.gridspec as gridspec
+# make a figure
+fig = plt.figure(figsize=(20, 8)) # without legends is (20, 8)
+# make 8 axes in a 2x4 grid
+gs = gridspec.GridSpec(2, 4, figure=fig)
+
+
+params = {
+   'axes.labelsize': 16,
+   'axes.titlesize': 20,
+   'font.size': 20,
+   'font.family': 'Arial',
+   'legend.fontsize': 12,
+   'xtick.labelsize': 16,
+   'ytick.labelsize': 16,
+   'text.usetex': False,
+   'figure.figsize': [21, 7]
+   }
+
+with plt.rc_context(params):
+    for itype, type in enumerate(['all', 'inh', 'exc', 'abs']):
+        for jnorm, yvar in enumerate(['mean_cosine_similarity', 'norm_mean_cosine_similarity']):
+            ax_tmp = fig.add_subplot(gs[jnorm, itype])
+            plot_rsa(ax_tmp, df_rsa_table, net_str, layer_str, y_var=yvar, type_to_plot=type)
+            ax_tmp.set_xticks([0, 0.5, 1])
+            if itype == 1 or itype == 2:
+                # remove legend from the last plot
+                ax_tmp.legend().remove()
+                # legend title to empty string
+            if type != 'all':
+                ax_tmp.set_title(type)
+    plt.suptitle(f'{net_str} {layer_str}')
+    plt.tight_layout()
+plt.show()
+
+fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength.png'
+fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength.pdf'
+fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+
+
+dsde
+
+#%%
+# To get top scoring images, but maybe more efficient to just use the lists and index back as below
+# top_9_df = df.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).apply(lambda group: group.sort_values('scores', ascending=False).head(9))
+
+from mpl_toolkits.axes_grid1 import ImageGrid
+
+
+def plot_topn_imgrid_from_df(df, image_list, layer_str, net_str, unit, n_types, max_n_ims_type, n_top=9):
+    # fig = plt.figure(figsize=(21., 6.))
+    fig = plt.figure()
+    ncols = max_n_ims_type + 1
+    nrows = n_types - 1
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                     nrows_ncols=(nrows, ncols),  # creates 2x2 grid of axes
+                     axes_pad=0.35,  # pad between axes in inch.
+                     )
+
+    for ii, (name, group) in enumerate(
+            df.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).head(1).groupby('type')):
+        print(name)
+        # print(group)
+        # print(group.index)
+        # print(group.scores)
+        # print(group.old_index)
+        for jj, (_, row_data) in enumerate(group.iterrows()):
+            # print(jj)
+            if name == 'none':
+                ax = grid[ncols]
+            else:
+                ax = grid[ncols * ii + jj + 1]
+            # print("row_data:\n", row_data)
+            plt.sca(ax)
+            list_index = row_data.old_index
+
+            # top9_im_grid = anevo.get_top_n_im_grid(scores=perturbation_data_dict['scores'][list_index],
+            #                                        images=perturbation_data_dict['images'][list_index], top_n=n_top)
+            top9_im_grid = anevo.get_top_n_im_grid(scores=df[df.old_index == list_index].scores.tolist(),
+                                                   images=image_list[list_index], top_n=n_top)
+            plt.imshow(top9_im_grid)  # index is the 0th column of the row.
+            if name == 'none':  # ii == 0 and jj == 0:
+                plt.title('(strength: {},\nscore: {:0.2f})'.format(row_data.strength, row_data.scores))
+            else:
+                plt.title('({}, {:0.2f})'.format(row_data.strength, row_data.scores))
+
+            if jj == 0 or name == 'none':
+                # ax.set_ylabel(name)
+                # add text to the left of the image
+                ax.text(-0.1, 0.5, name, horizontalalignment='center', verticalalignment='center',
+                        transform=ax.transAxes, rotation=90, fontdict=None)
+                ax.set_xticks([])
+                ax.set_yticks([])
+            else:
+                plt.axis('off')
+                grid[0].set_visible(False)
+                grid[ncols * (nrows - 1)].set_visible(False)
+
+
+    # fig.suptitle(f'{net_str} {layer_str}')
+    fig.suptitle(f'{net_str} {layer_str} unit {unit}')
+
+    fig.tight_layout()
+    fig_filename = os.path.join(figures_dir, f'{net_str}_{layer_str}_{unit}_preferred_top{n_top}_images.pdf')
+    plt.savefig(fig_filename,
+                dpi=300, format='pdf', metadata=None,
+                bbox_inches=None, pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None, transparent=True
+               )
+    plt.show()
+
+
+
+
+params = {
+   'axes.labelsize': 14,
+   'axes.titlesize': 16,
+   'font.size': 22,
+   'font.family': 'Arial',
+   'legend.fontsize': 16,
+   'xtick.labelsize': 16,
+   'ytick.labelsize': 16,
+   'text.usetex': False,
+   'figure.figsize': [21, 7]
+   }
+# rcParams.update(params)
+
+for key, value in df_dict.items():
+    print(key)
+    unit = key
+    df_temp = df_dict[key].copy()
+    # find the column that contains score substring in its name
+    score_col = [col for col in df_temp.columns if 'scores' in col][0]
+    df_temp = df_temp.explode(score_col)
+    # rename scores_0 to scores
+    df_temp = df_temp.rename(columns={score_col: 'scores'})
+    df_temp = df_temp.reset_index(names='old_index')
+    n_types = len(pd.unique(df_temp.sort_values(['type', 'strength']).type))
+    max_n_ims_type = df_temp.sort_values(['type', 'strength']).groupby('type').apply(len).max()
+    # plot_topn_imgrid_from_df(df_temp, image_dict[0], n_types=4, max_n_ims_type=10, n_top=9)
+
+    with mpl.rc_context(params):
+        plot_topn_imgrid_from_df(df_temp, image_dict[key], layer_str, net_str, unit, n_types=4, max_n_ims_type=10, n_top=9)
+#%%
+ssdxx
+sys.exit()
+
+#%%
+# y_var = 'norm_mean_cosine_similarity'  #
+# y_var = 'mean_cosine_similarity'
+
+
+#
+# #plot a horizontal line at the control cosine similarity df[df.type == 'none'].cosine_similarity.values.mean()
+# control_similarities = df_rsa_table[df_rsa_table.type == 'none'][y_var].values
+# # then compute the confidence interval
+# ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+# # plot the mean and confidence interval, without edgecolor
+# plt.fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+# plt.axhline(y=control_similarities.mean(), color='k', linestyle='-', alpha=0.1)
+# # plot the cosine similarity vs the silencing strength separately for each type, using seaborn
+# sns.lineplot(data=df_rsa_table, x='strength', y=y_var, hue='type', alpha=0.5)
+#
+# plt.title(f'{net_str} {layer_str}')
+# # square axes, with unequal aspect ratio
+# plt.gca().set_aspect(1 / plt.gca().get_data_ratio())
+# # move legend outside the plot
+# plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+# plt.tight_layout()
+# plt.show()
+
+
+# # make three subplots, one for each type in a row
+# fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(6, 3), dpi=300, sharex=True, sharey=True)
+#
+# for ii, type in enumerate(['inh', 'exc', 'abs']):
+#     axes[ii].set_title(type)
+#     # plot the mean and confidence interval of the control df_rsa[df_rsa.type == 'none'].mean_cosine_similarity
+#     control_similarities = df_rsa_table[df_rsa_table.type == 'none'][y_var].values
+#     # first compute the mean
+#     mean = control_similarities.mean()
+#     # then compute the confidence interval
+#     ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+#     # plot the mean and confidence interval, without edgecolor
+#     axes[ii].fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+#     axes[ii].axhline(y=mean, color='k', linestyle='-', alpha=0.1)
+#     # plot the scatter values of the control df_rsa_table[df_rsa_table.type == 'none'][y_var]
+#     sns.scatterplot(data=df_rsa_table[df_rsa_table.type == 'none'], x='strength', y=y_var, hue='unit',
+#                     ax=axes[ii], palette='tab20', alpha=1)
+#     sns.lineplot(data=df_rsa_table[df_rsa_table.type == type], x='strength', y=y_var, hue='unit',
+#                  ax=axes[ii], palette='tab20', alpha=1)
+#     # axes[ii].axhline(y=df_rsa_table[df_rsa_table.type == 'none'][y_var].values.mean(), color='k', linestyle='--')
+#     # axes[ii].set_xlim([0, 1])
+#     # axes[ii].set_ylim([0, 1])
+#     axes[ii].set_xticks([0, 0.5, 1])
+#     axes[ii].set_ylabel('cosine similarity(silenced, control)')
+#     axes[ii].set_xlabel('silencing strength')
+#     axes[ii].legend().remove()
+#
+# # fig title using net_str and layer_str
+# fig.suptitle(f'{net_str} {layer_str}')
+# fig.tight_layout()
+# plt.show()
+    #%%
+if 0:
+    # for each row in df, get the image list from image_list corresponding to the list_index
+    # and then compute the output from several networks
+    all_ims_tensor = torch.stack(top_per_condition_im_list)
+
+    network_list = ['alexnet',
+                    'resnet50',
+                    'resnet50_linf0.5', 'resnet50_linf1', 'resnet50_linf2', 'resnet50_linf4', 'resnet50_linf8']
+    model_outputs = []
+    # Now pass the tensor to get network activations
+
+    for net in network_list:
+        scorer = TorchScorer(net)
+        # for each row in df, get the image list from image_list corresponding to the list_index
+        # and then compute the output from several networks
+        # find the index of df where type is none
+
+        control_im_list = image_list[np.where(df.type == 'none')[0][0]]  # here one image is from one evolution
+        control_tensor = torch.stack(control_im_list).to(torch.device('cuda:0'))
+
+        for index, row in df.iterrows():
+            # get the image list from image_list corresponding to the list_index
+            silenced_images_tensor = torch.stack(image_list[index]).to(torch.device('cuda:0'))
+            control_output = scorer.model(control_tensor)
+            silenced_output = scorer.model(silenced_images_tensor)
+            # compute softmax
+            control_output = torch.nn.functional.softmax(control_output, dim=1)
+            silenced_output = torch.nn.functional.softmax(silenced_output, dim=1)
+            # compute the correlation matrix between control and silenced
+# stopped here, continue with cosine of torchmetrics
+
+        model_output = scorer.model(all_ims_tensor.to(torch.device('cuda:0'))).cpu().detach()
+        model_output = torch.nn.functional.softmax(model_output, dim=1)
+        # we know we picked topn images per group
+        if topn > 1:
+            model_output = model_output.reshape(-1, topn, 1000).mean(axis=1)
+        model_outputs.append(
+            torch.log(model_output))  # cross entropy loss uses sum over one-hot class x log(softmax(class))
+
+    # this sorting could be done by list_argsort list by list instead of exploding the dataframe
+    # Get the list of top n images sorted in same order as dataframe
+    topn = 1
+    topn_df = df.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).apply(
+        lambda group: group.sort_values(unit_scores_str, ascending=False).head(topn))
+
+    # Select only one index of multiindex DataFrame
+    # https://stackoverflow.com/questions/28140771/select-only-one-index-of-multiindex-dataframe
+    top_indices = topn_df.index.get_level_values(2).values
+
+    # top_per_condition_im_list = [im
+    #                              for ind, im in
+    #                              enumerate(itertools.chain.from_iterable(perturbation_data_dict['images']))
+    #                              if ind in top_indices]
+    # top_per_condition_im_list = [top_per_condition_im_list[sorted(top_indices).index(ind)] for ind in top_indices]
+
+#%%
+# do not try to merge an exploded list, there are duplicates in the columns type and strength resulting in memory error
+df_list = list(df_dict.values())
+
+merged_df = reduce(lambda left, right:
+                   pd.merge(left, right, on=['type', 'strength'], how='inner', validate='one_to_one'),
+                   df_list)
+
+#%%
+
+test_df = pd.merge(df_list[0], df_list[1], how='inner', on=['type', 'strength'])
+
+#%%
+score_name = 'scores_217'
+df = df.explode([score_name])
+# df = df.explode(['scores'])
+
+df.scores = df[score_name].astype("float")
+df.type = df.type.astype("string")
+df = df.reset_index(names='old_index')
+max_inds = df.sort_values(score_name, ascending=False).drop_duplicates(['type', 'strength']).index.values
+
+#%%
+# Get maximum image per condition
+max_df = df.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength'], group_keys=False).apply(
+    lambda group: group.sort_values('scores', ascending=False).head(1))  # set group_keys=False to avoid multiindex creation
+
+#%%
+max_per_condition_im_list = [im for ind, im in enumerate(itertools.chain.from_iterable(perturbation_data_dict['images']))
+                             if ind in max_inds]
+# Sort so the order matches the max_df
+max_per_condition_im_list = [max_per_condition_im_list[sorted(max_inds).index(ind)] for ind in max_df.index]
+#%% # start of original code ##########################################################################################
 # layer_str = '.classifier.Linear6'
-layer_str = '.Linearfc' # for resnets
+# layer_str = '.Linearfc' # for resnets
 unit_idx = 574#398# imagenet 373  # ecoset 13, 373, 14, 12, 72, 66, 78
 unit_pattern = 'alexnet-eco-080.*%s_%s' % (layer_str, unit_idx)
 # unit_pattern = 'alexnet_.*%s_%s' % (layer_str, unit_idx)
 unit_pattern = 'resnet50_%s_%s' % (layer_str, unit_idx)
 unit_pattern = 'resnet50_linf0.5_%s_%s' % (layer_str, unit_idx)
 unit_pattern = 'resnet50_linf8_%s_%s' % (layer_str, unit_idx)
+
+unit_pattern = net_str + '_' + layer_str + '_' + str(unit_idx)
+
 perturbation_pattern = '_kill_topFraction_'
 # %%
 original_dir = [idir for idir in next(os.walk(rootdir))[1] if re.match(unit_pattern + '$', idir)]
 data_dirs = [idir for idir in next(os.walk(rootdir))[1] if re.match(unit_pattern + perturbation_pattern, idir)]
-# %%
-perturbation_fractions = [float(re.search(r'.*_([\-\.\d]+)?', dir).group(1)) for dir in data_dirs]
-perturbation_types = ['abs' if 'abs' in data_dir else 'exc' if fraction >= 0 else 'inh'
-                      for data_dir, fraction in zip(data_dirs, perturbation_fractions)]
-# add original unperturbed unit
-perturbation_fractions.append(0)
-perturbation_types.append('none')
-perturbation_data_dict = {'type': perturbation_types,
-                          'strength': [abs(frac) for frac in perturbation_fractions]}
+
 #%%
-# Extract the top image and score per evolution experiment inside a folder, dimension n_folders x m_evolutions
-max_scores_list = []
-max_im_tensor_list = []
-for data_dir in data_dirs + original_dir:
-    artificial_unit_dir = join(rootdir, data_dir)
-    max_scores, max_im_tensor = anevo.extrac_top_scores_and_images_from_dir(artificial_unit_dir)
-    print("%s has %d scores" % (data_dir, len(max_scores)))
-    max_scores_list.append(max_scores)
-    max_im_tensor_list.append(max_im_tensor)
+# get a list from the perturbation suffixes _kill.*$
+suffix_pattern = re.compile(r'.*(_kill.*)$')
+perturbation_suffixes = [re.search(suffix_pattern, dir).group(1) for dir in data_dirs]
 
 
 # %%
-# plot the amount of silencing versus the maximum scores
-perturbation_data_dict['scores'] = max_scores_list
-perturbation_data_dict['images'] = max_im_tensor_list
 
-# %%
-
-columns = ['type', 'strength', 'scores']
-# columns = ['type', 'strength', 'scores', 'images']
+columns = ['type', 'strength', 'scores']  # ['type', 'strength', 'scores', 'images'] don't put images! Too big
 df = pd.DataFrame.from_dict({key: perturbation_data_dict[key] for key in columns})
 df = df.explode(['scores'])
-# df = df.explode(['scores', 'images'])
-
-#%%
+# Put proper types to avoid object type
 df.scores = df.scores.astype("float")
 df.type = df.type.astype("string")
 
@@ -190,7 +800,8 @@ max_df = df.sort_values(['type', 'strength'], ascending=True).groupby(['type', '
     lambda group: group.sort_values('scores', ascending=False).head(1))  # set group_keys=False to avoid multiindex creation
 
 #%%
-max_per_condition_im_list = [im for ind, im in enumerate(itertools.chain.from_iterable(perturbation_data_dict['images']))
+max_per_condition_im_list = [im
+                             for ind, im in enumerate(itertools.chain.from_iterable(perturbation_data_dict['images']))
                              if ind in max_inds]
 # Sort so the order matches the max_df
 max_per_condition_im_list = [max_per_condition_im_list[sorted(max_inds).index(ind)] for ind in max_df.index]
@@ -292,8 +903,8 @@ params = {
    'figure.figsize': [5, 5]
    }
 # rcParams.update(params)
-figdir = os.path.join('C:', 'Users', 'gio', 'Data', 'figures', 'silencing')
-os.makedirs(figdir, exist_ok=True)
+figures_dir = os.path.join('C:', 'Users', 'gio', 'Data', 'figures', 'silencing')
+os.makedirs(figures_dir, exist_ok=True)
 with mpl.rc_context(params):
     fig, ax = plt.subplots(figsize=(6, 6), dpi=300)
     # fig = plt.figure(figsize=(2, 2), dpi=300)
@@ -320,11 +931,11 @@ with mpl.rc_context(params):
     #     hue='type', hue_order=['abs', 'inh', 'exc'], col_order=['inh', 'exc', 'abs'], #  style='net'
     #     kind="line"
     # )
-    plt.savefig(os.path.join(figdir, '%s__net_output_correlations.pdf' % original_dir[0]), dpi=300, format='pdf', metadata=None,
-            bbox_inches=None, pad_inches=0.1,
-            facecolor='auto', edgecolor='auto',
-            backend=None, transparent=True
-           )
+    plt.savefig(os.path.join(figures_dir, '%s__net_output_correlations.pdf' % original_dir[0]), dpi=300, format='pdf', metadata=None,
+                bbox_inches=None, pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None, transparent=True
+                )
     plt.show()
 # %%
 # sns.barplot(correlations_df.drop(columns=['type', 'strength']))
