@@ -26,7 +26,6 @@ from scipy.stats import gaussian_kde as kde
 import insilico_experiments.analyze_evolutions as anevo
 
 
-
 # %% test for the perturbation analysis
 torch.cuda.empty_cache()
 
@@ -40,13 +39,23 @@ from core.utils.GAN_utils import BigGAN_wrapper, upconvGAN, loadBigGAN
 rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 rootdir = r"M:\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
 rootdir = r"C:\Users\gio\Data"  # since my home folder got full
-layer_str = '.classifier.Linear6'
-layer_str = '.Linearfc'
-unit_idx = 373#398# imagenet 373  # ecoset 13, 373, 14, 12, 72, 66, 78
-unit_pattern = 'alexnet-eco-080.*%s_%s' % (layer_str, unit_idx)
-unit_pattern = 'alexnet_.*%s_%s' % (layer_str, unit_idx)
+
+net_str = 'vgg16' #'alexnet'  # 'resnet50', 'alexnet-eco-080'
+
+if any(s in net_str for s in ['alexnet-eco', 'resnet50']):
+    layer_str = '.Linearfc'  # for resnet50 and alexnet-eco-080
+else:
+    layer_str = '.classifier.Linear6'  # for alexnet
+
+print(f'Possible units to analyze: {anevo.get_recorded_unit_indices(rootdir, net_str, layer_str)}')
+
+unit_idx = 574#398# imagenet 373  # ecoset 13, 373, 14, 12, 72, 66, 78
+
+unit_pattern = net_str + '_' + layer_str + '_' + str(unit_idx)
+# unit_pattern = 'alexnet-eco-080.*%s_%s' % (layer_str, unit_idx)
+# unit_pattern = 'alexnet_.*%s_%s' % (layer_str, unit_idx)
 # unit_pattern = 'resnet50_%s_%s' % (layer_str, unit_idx)
-unit_pattern = 'resnet50_linf8_%s_%s' % (layer_str, unit_idx)
+# unit_pattern = 'resnet50_linf8_%s_%s' % (layer_str, unit_idx)
 perturbation_pattern = '_kill_topFraction_'
 # unit_pattern += perturbation_pattern
 figdir = os.path.join('C:', 'Users', 'gio', 'Data', 'figures', 'silencing')
