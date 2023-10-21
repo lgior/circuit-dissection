@@ -42,9 +42,15 @@ def load_folder_evolutions(data_dir_path):
     weights_silenced_list = []
     # TODO check that files load always in the same order, or sort them in analysis for reproducibility
     for _ifile in range(len(scores_npzfiles)):
-        # Check that image and score files match.
-        assert (re.search(r'scores(.*)\.npz', scores_npzfiles[_ifile]).group(1) ==
-                re.search(r'lastgen(.*)_score.*', final_imgfiles[_ifile]).group(1))
+        # Check that image and score files match, and print an error if they don't
+        try:
+            assert (re.search(r'scores(.*)\.npz', scores_npzfiles[_ifile]).group(1) ==
+                    re.search(r'lastgen(.*)_score.*', final_imgfiles[_ifile]).group(1)), \
+                'ERROR: scores and final images do not match: %s | %s' % \
+                (scores_npzfiles[_ifile], final_imgfiles[_ifile])
+        except AssertionError as error:
+            print(error)
+
         evolution_exp_data = np.load(join(data_dir_path, scores_npzfiles[_ifile]))  # this was my original version
         evolution_exp_data = np.load(join(data_dir_path, scores_npzfiles[_ifile]), allow_pickle=True)
         scores_list.append(evolution_exp_data['scores_all'])
@@ -460,4 +466,111 @@ def get_top_n_im_grid(scores: list, images: torch.Tensor, top_n: int):
 
 def jitter(values, scale):
     return values + np.random.normal(0, scale, values.shape)
+
+
+def get_recorded_unit_indices(rootdir, net_str, layer_str):
+    # "C:\Users\gio\Data\resnet50_linf8_.Linearfc_701_kill_topFraction_in_weight_-0.30"
+    unit_pattern = net_str + '_' + layer_str  # match
+    pattern = re.compile(rf'{re.escape(unit_pattern)}_(\d+)(_.*)?')
+    unit_indices = [int(pattern.findall(idir)[0][0]) for idir in next(os.walk(rootdir))[1] if pattern.search(idir)]
+    # unique unit_indices without numpy
+    unit_indices = list(dict.fromkeys(unit_indices))
+    return unit_indices
+
+
+def get_recorded_layers_from_network(rootdir, net_str):
+    pattern = re.compile(rf'{re.escape(net_str)}_(.*)_\d+(_.*)?')
+    print(pattern)
+    layer_str = [pattern.findall(idir)[0][0] for idir in next(os.walk(rootdir))[1] if pattern.search(idir)]
+    layer_str = list(dict.fromkeys(layer_str))
+    return layer_str
+
+
+def get_unit_data_dirs(rootdir, net_str, layer_str, unit_idx, experiment_pattern):
+    unit_pattern = net_str + '_' + layer_str + '_' + str(unit_idx)
+    data_dirs = [tmp_dir for tmp_dir in next(os.walk(rootdir))[1]
+                 if re.match(unit_pattern + '$', tmp_dir) or re.match(unit_pattern + experiment_pattern, tmp_dir)]
+
+    return data_dirs
+
+
+def find_directories_matching_pattern(rootdir, pattern):
+    matching_dirs = []
+    for _, dir_names, _ in os.walk(rootdir):
+        matching_dirs.extend([tmp_dir for tmp_dir in dir_names if re.match(pattern, tmp_dir)])
+    return matching_dirs
+
+
+
+
+def get_complete_experiment_units(rootdir, net_str, layer_str, experiment_pattern, experiment_re_str, full_experiment_suffix_list):
+    experiment_re = re.compile(experiment_re_str)  # re.compile(r'.*(_kill.*)$')
+    unit_indices = get_recorded_unit_indices(rootdir, net_str, layer_str)
+    complete_experiment_units = {}
+    for unit_idx in unit_indices:
+        data_dirs = get_unit_data_dirs(rootdir, net_str, layer_str, unit_idx, experiment_pattern)
+        # get a list from the perturbation suffixes _kill.*$
+
+        unit_experiment_suffix_list = [re.search(experiment_re, data_dir).group(1) for data_dir in data_dirs
+                                       if experiment_pattern in data_dir]
+        # check that all experiments are present
+        if not set(full_experiment_suffix_list).issubset(set(unit_experiment_suffix_list)):
+            print(f'Unit {unit_idx} is missing experiments: '
+                  f'{set(full_experiment_suffix_list).difference(set(unit_experiment_suffix_list))}')
+            complete_experiment_units[unit_idx] = set(full_experiment_suffix_list).difference(set(unit_experiment_suffix_list))
+        else:
+            complete_experiment_units[unit_idx] = None
+    # print the list of keys for which the value is none as the complete unit indices
+    print('Complete unit indices: ', [key for key, value in complete_experiment_units.items() if value is None])
+    return complete_experiment_units
+
+
+def get_complete_experiment_list():
+    # complete list of experiments
+    full_experiment_suffixes = {}
+    # fill with a list comprehension
+    # print as strings with two decimals 0.2f
+    abs_weights = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, .99]
+    full_experiment_suffixes['kill_topFraction_abs_in_weight'] = [
+        f'_kill_topFraction_abs_in_weight_{x:.2f}'for x in abs_weights
+    ]
+    exc_inh_weights = list(np.round(np.arange(0.1, 1.1, 0.1), 2))
+    exc_experiment_suffixes = [f'_kill_topFraction_in_weight_{x:.2f}'for x in exc_inh_weights]
+    inh_experiment_suffixes = [f'_kill_topFraction_in_weight_{-x:.2f}'for x in exc_inh_weights]
+    full_experiment_suffixes['kill_topFraction_in_weight'] = inh_experiment_suffixes + exc_experiment_suffixes
+
+    # full_experiment_suffixes = [
+    #     '_kill_topFraction_abs_in_weight_0.10',
+    #     '_kill_topFraction_abs_in_weight_0.20',
+    #     '_kill_topFraction_abs_in_weight_0.30',
+    #     '_kill_topFraction_abs_in_weight_0.40',
+    #     '_kill_topFraction_abs_in_weight_0.50',
+    #     '_kill_topFraction_abs_in_weight_0.60',
+    #     '_kill_topFraction_abs_in_weight_0.70',
+    #     '_kill_topFraction_abs_in_weight_0.80',
+    #     '_kill_topFraction_abs_in_weight_0.90',
+    #     '_kill_topFraction_abs_in_weight_0.99',
+    #     '_kill_topFraction_in_weight_-0.10',
+    #     '_kill_topFraction_in_weight_-0.20',
+    #     '_kill_topFraction_in_weight_-0.30',
+    #     '_kill_topFraction_in_weight_-0.40',
+    #     '_kill_topFraction_in_weight_-0.50',
+    #     '_kill_topFraction_in_weight_-0.60',
+    #     '_kill_topFraction_in_weight_-0.70',
+    #     '_kill_topFraction_in_weight_-0.80',
+    #     '_kill_topFraction_in_weight_-0.90',
+    #     '_kill_topFraction_in_weight_-1.00',
+    #     '_kill_topFraction_in_weight_0.10',
+    #     '_kill_topFraction_in_weight_0.20',
+    #     '_kill_topFraction_in_weight_0.30',
+    #     '_kill_topFraction_in_weight_0.40',
+    #     '_kill_topFraction_in_weight_0.50',
+    #     '_kill_topFraction_in_weight_0.60',
+    #     '_kill_topFraction_in_weight_0.70',
+    #     '_kill_topFraction_in_weight_0.80',
+    #     '_kill_topFraction_in_weight_0.90',
+    #     '_kill_topFraction_in_weight_1.00'
+    # ]
+
+    return full_experiment_suffixes
 
