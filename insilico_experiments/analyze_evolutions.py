@@ -203,15 +203,25 @@ def compute_lpips_dist_matrix_from_im_list(im_list):
 # plotting stuff
 
 
-def plot_scatter_line_colored_by_density(x_array, y_array, ax, scatter_kws, line_kws):
+def plot_scatter_line_colored_by_density(x_array, y_array, ax, scatter_kws=None, line_kws=None, cmap=None, compute_kde=True):
     def get_colors(vals):
         colors = np.zeros((len(vals), 3))
         norm = mpl.colors.Normalize(vmin=vals.min(), vmax=vals.max())
-        colors = [mpl.cm.ScalarMappable(norm=norm, cmap='magma_r').to_rgba(val) for val in vals]
+        # cmap = sns.color_palette("flare", as_cmap=True)
+        colors = [mpl.cm.ScalarMappable(norm=norm, cmap=cmap).to_rgba(val) for val in vals]
         return colors
 
-    kde_obj = kde(np.vstack((x_array, y_array)))
-    colors = get_colors(kde_obj(np.vstack((x_array, y_array))))
+    if cmap is None:
+        cmap = mpl.colormaps['magma_r']
+    # set default scatter and line kws
+    scatter_kws = scatter_kws or {'alpha': 1}
+    line_kws = line_kws or {'color': 'xkcd:charcoal'}
+
+    if compute_kde:
+        kde_obj = kde(np.vstack((x_array, y_array)))
+        colors = get_colors(kde_obj(np.vstack((x_array, y_array))))
+    else:
+        colors = 'xkcd:dusty lavender'
     ax = sns.regplot(x=x_array, y=y_array, ax=ax, scatter_kws=scatter_kws | {'color': colors}, line_kws=line_kws)
     return ax
 
@@ -399,18 +409,30 @@ def extrac_top_scores_and_images_from_dir(artificial_unit_dir, overwrite_existin
     biggan_codes = [max_codes[index] for index in biggan_inds]
     fc6_codes = [max_codes[index] for index in fc6_inds]
 
-    biggan_ims = G.visualize(torch.from_numpy(np.array(biggan_codes)).float().cuda()).cpu()
-    fc6_ims = G_fc6.visualize(torch.from_numpy(np.array(fc6_codes)).float().cuda()).cpu()
 
     # put images back into a list and sort by original ordering
     unsorted_inds = biggan_inds + fc6_inds
     original_inds = sorted(range(len(unsorted_inds)), key=unsorted_inds.__getitem__)
-    max_im_tensor = torch.cat((biggan_ims, fc6_ims))[original_inds, ...]
+    if len(biggan_inds) >= 1 and len(fc6_inds) >= 1:
+        print('Loading %d BigGAN images and %d fc6 images' % (len(biggan_inds), len(fc6_inds)))
+        biggan_ims = G.visualize(torch.from_numpy(np.array(biggan_codes)).float().cuda()).cpu()
+        fc6_ims = G_fc6.visualize(torch.from_numpy(np.array(fc6_codes)).float().cuda()).cpu()
+        max_im_tensor = torch.cat((biggan_ims, fc6_ims))[original_inds, ...]
+    elif len(biggan_inds) >= 1:
+        print('Loading %d BigGAN images' % len(biggan_inds))
+        biggan_ims = G.visualize(torch.from_numpy(np.array(biggan_codes)).float().cuda()).cpu()
+        max_im_tensor = biggan_ims[original_inds, ...]
+    elif len(fc6_inds) >= 1:
+        fc6_ims = G_fc6.visualize(torch.from_numpy(np.array(fc6_codes)).float().cuda()).cpu()
+        max_im_tensor = fc6_ims[original_inds, ...]
+
     # # max_image_list = [ToPILImage()(im) for im in torch.cat((biggan_ims, fc6_ims))]
     # # max_image_list = [max_image_list[ind] for ind in original_inds]
     # max_image_list = [ToPILImage()(im) for im in max_im_tensor]  # maybe could be used for other purposes
-    return max_scores, max_im_tensor
-
+    # make a vector indicating which images are fc6 and which are biggan
+    max_generator_labels = [data_dict_list['generator_labels'][ind] for ind in original_inds]
+    # make it an optional output
+    return max_scores, max_im_tensor, max_generator_labels
 
 # %%
 
@@ -525,16 +547,18 @@ def get_complete_experiment_units(rootdir, net_str, layer_str, experiment_patter
     return complete_experiment_units
 
 
-def get_complete_experiment_list():
+def get_complete_experiment_list(exc_inh_weights=None, abs_weights=None):
     # complete list of experiments
     full_experiment_suffixes = {}
     # fill with a list comprehension
     # print as strings with two decimals 0.2f
-    abs_weights = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, .99]
+    if abs_weights is None:
+        abs_weights = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, .99]
     full_experiment_suffixes['kill_topFraction_abs_in_weight'] = [
         f'_kill_topFraction_abs_in_weight_{x:.2f}'for x in abs_weights
     ]
-    exc_inh_weights = list(np.round(np.arange(0.1, 1.1, 0.1), 2))
+    if exc_inh_weights is None:
+        exc_inh_weights = list(np.round(np.arange(0.1, 1.1, 0.1), 2))
     exc_experiment_suffixes = [f'_kill_topFraction_in_weight_{x:.2f}'for x in exc_inh_weights]
     inh_experiment_suffixes = [f'_kill_topFraction_in_weight_{-x:.2f}'for x in exc_inh_weights]
     full_experiment_suffixes['kill_topFraction_in_weight'] = inh_experiment_suffixes + exc_experiment_suffixes
