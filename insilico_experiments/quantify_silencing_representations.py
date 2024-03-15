@@ -219,6 +219,55 @@ def initialize_df_structure(df, network_list, complete_unit_index_list):
     net_columns = pd.MultiIndex.from_product([complete_unit_index_list, network_list], names=['unit', 'test_network'])
     return df_copy.reindex(columns=net_columns)
 
+
+#%%
+
+def preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list, preprocess_data_to_file=True, perturbation_pattern=None, preprocessed_data_dir_path=None):
+    """
+    Preprocess silencing data into DataFrames and save them to files.
+
+    Args:
+    - rootdir (str): Root directory containing the silencing data.
+    - net_str (str): Network name.
+    - layer_str (str): Layer name.
+    - complete_unit_index_list (list): List of unit indices.
+    - preprocess_data_to_file (bool): Flag indicating whether to preprocess data and save to files (default: True).
+    - perturbation_pattern (str): Pattern for identifying experiment directories (default: None).
+    - preprocessed_data_dir_path (str): Directory path to save preprocessed data files (default: None).
+
+    Returns:
+    - df_dict (dict): Dictionary containing DataFrames.
+    - image_dict (dict): Dictionary containing image data.
+    """
+    columns = ['type', 'strength', 'scores', 'generator']  # 'images' is too big to be stored in a dataframe
+    df_dict = {}
+    image_dict = {}
+
+    for unit in tqdm(complete_unit_index_list, desc="Processing units"):
+        # Get the directories of all the experiments for a given unit
+        unit_data_dirs = anevo.get_unit_data_dirs(rootdir, net_str, layer_str, unit,
+                                                  experiment_pattern=perturbation_pattern)
+        # Extract the top image and score per evolution experiment inside a folder
+        perturbation_data_dict = get_perturbation_data_dict(rootdir, unit_data_dirs)
+        df = pd.DataFrame.from_dict({key: perturbation_data_dict[key] for key in columns})
+        df.reset_index(names='list_index', inplace=True)
+        # Rename column 'scores' to 'scores_unit'
+        unit_scores_str = f'scores_{unit}'
+        df.rename(columns={'scores': unit_scores_str}, inplace=True)
+        df_dict[unit] = df
+        image_dict[unit] = perturbation_data_dict['images']
+
+    # Save DataFrames and image data to files
+    if preprocess_data_to_file:
+        print("Saving preprocessed data to files...")
+        file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
+        with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
+            pickle.dump(df_dict, f)
+        file_name = f'{net_str}_{layer_str}_image_dict.pkl'
+        with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
+            pickle.dump(image_dict, f)
+
+    return df_dict, image_dict
 #%%
 
 figures_dir = os.path.join('C:', 'Users', 'gio', 'Data', 'figures', 'silencing')
@@ -296,39 +345,11 @@ imagenette_units = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
 
 preprocess_data_to_file = True
 
-if preprocess_data_to_file:
-
-    columns = ['type', 'strength', 'scores', 'generator']  # 'images' is too big to be stored in a dataframe
-    df_dict = {}
-    image_dict = {}
-
-    for unit in tqdm(complete_unit_index_list):
-        print(f'Analyzing unit {unit}')
-        # Get the directories of all the experiments for a given unit
-        unit_data_dirs = anevo.get_unit_data_dirs(rootdir, net_str, layer_str, unit,
-                                                  experiment_pattern=perturbation_pattern)
-
-        # Extract the top image and score per evolution experiment inside a folder, dimension n_folders x m_evolutions
-        perturbation_data_dict = get_perturbation_data_dict(rootdir, unit_data_dirs)
-        df = pd.DataFrame.from_dict({key: perturbation_data_dict[key] for key in columns})
-        df.reset_index(names='list_index')
-        # rename column score to score + unit
-        unit_scores_str = f'scores_{unit}'
-        df = df.rename(columns={'scores': unit_scores_str})
-        df_dict[unit] = df
-        image_dict[unit] = perturbation_data_dict['images']
-
-
-    # save image_dict and df_list to file in rootdir named after net_str and layer_str
-
-    file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
-    with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
-        pickle.dump(df_dict, f)
-
-    file_name = f'{net_str}_{layer_str}_images_dict.pkl'
-    with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
-        pickle.dump(image_dict, f)
-
+# Compile the single unit data into a dictionary of dataframes and images
+df_dict, image_dict = preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list,
+                                                      preprocess_data_to_file=True,
+                                                      perturbation_pattern=perturbation_pattern,
+                                                      preprocessed_data_dir_path=preprocessed_data_dir_path)
 
 #%%
 # load dataframes and images from file
@@ -409,7 +430,7 @@ for ii, unit in enumerate(complete_unit_index_list):
         df = df.explode([unit_scores_str])
     df[unit_scores_str] = df[unit_scores_str].astype("float")
     df.type = df.type.astype("string")
-    df = df.reset_index(names='list_index')
+    # df = df.reset_index(names='list_index') ## changed to inplace in loading function
     # with plt.rc_context(params):
     plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=axes[ii // 4, ii % 4], params_dict=params)
 
