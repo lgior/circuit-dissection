@@ -135,6 +135,17 @@ class TorchScorer:
                 self.layers = list(self.model.features) + list(self.model.classifier)
                 self.layername = None if rawlayername else layername_dict[model_name]
                 self.inputsize = (3, imgpix, imgpix)
+            elif "alexnet-single-neuron" in model_name:
+                # suffix is everything after single-neuron
+                suffix = model_name.split("single-neuron")[1]
+                model_path = 'M:\\Code\\analyzeneuraldata\\alexnet_best_coefficients' + suffix + '.pth'
+                model_path = r'C:\Users\gio\OneDrive - Harvard University\Data\Data_ephys\PonceLab\preprocessed_files' \
+                             r'\alexnet_best_coefficients' + suffix + '.pth'
+                # load model from pth file
+                self.model = torch.load(model_path)
+                self.layers = list(self.model.features) + list(self.model.classifier)
+                self.layername = None if rawlayername else layername_dict[model_name]
+                self.inputsize = (3, imgpix, imgpix)
             elif "alexnet-eco" in model_name:
                 self.model = models.__dict__['alexnet'](pretrained=False, num_classes=565)
                 if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
