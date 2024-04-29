@@ -482,7 +482,7 @@ def list_argsort(a_list, reverse=False):
 
 def get_top_n_im_grid(scores: list, images: torch.Tensor, top_n: int):
     top_inds = list_argsort(scores, reverse=True)[:top_n]
-    top_n_im_grid = ToPILImage()(make_grid(images[top_inds, ...], nrow=int(np.ceil(np.sqrt(top_n)))))
+    top_n_im_grid = ToPILImage()(make_grid(images[top_inds, ...], nrow=int(np.ceil(np.sqrt(top_n))), pad_value=1))
     return top_n_im_grid
 
 
