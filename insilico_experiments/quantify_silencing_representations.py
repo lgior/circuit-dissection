@@ -156,39 +156,66 @@ def get_perturbation_data_dict(rootdir, unit_data_dirs):
 
 #%%
 
-
 def preprocess_dataframe(df, unit_scores_str):
-    if unit_scores_str in df.columns:
-        df.drop(columns=[unit_scores_str], inplace=True)
-    df['type'] = df['type'].astype(str)
-
+    df_copy = df.copy()  # Create a copy of the dataframe
+    if unit_scores_str in df_copy.columns:
+        df_copy.drop(columns=[unit_scores_str], inplace=True)  # Modify the copy
+    df_copy['type'] = df_copy['type'].astype(str)
+    return df_copy  # Return the modified copy
 
 def compute_mean_cosine_similarity(silenced_output, control_output):
-    cosine_similarity = torch.triu(pairwise_cosine_similarity(silenced_output, control_output), diagonal=1)
+    # check if silenced_output and control_output are equal
+    if torch.equal(silenced_output, control_output):
+        cosine_similarity = pairwise_cosine_similarity(silenced_output, control_output)
+        # get upper triangular values
+        triu_inds = torch.triu(torch.ones_like(cosine_similarity), diagonal=1)
+        cosine_similarity = cosine_similarity[triu_inds == 1]
+    else:
+        cosine_similarity = pairwise_cosine_similarity(silenced_output, control_output)
     return torch.mean(cosine_similarity).detach().cpu().numpy()
 
+def compute_mean_euclidean_norm(silenced_output, control_output):
+    euclidean_norm = torch.norm(silenced_output, dim=1)
+    # return mean along samples
+    return torch.mean(euclidean_norm).detach().cpu().numpy()
 
-def compute_rsa_values(df, image_list, scorer, control_output):
+def compute_rsa_values(df, image_list, scorer, control_output, similarity_metric='cosine_similarity'):
     rsa_values = []
     for index, row in df.iterrows():
         silenced_images_tensor = image_list[index].to(torch.device('cuda:0'))
         silenced_output = scorer.model(silenced_images_tensor)
         silenced_output = torch.nn.functional.softmax(silenced_output, dim=1)
-        mean_cosine_similarity = compute_mean_cosine_similarity(silenced_output, control_output)
+        if similarity_metric == 'cosine_similarity':
+            mean_cosine_similarity = compute_mean_cosine_similarity(silenced_output, control_output)
+        elif similarity_metric == 'euclidean_norm':
+            mean_cosine_similarity = compute_mean_euclidean_norm(silenced_output, control_output)
         rsa_values.append(mean_cosine_similarity)
     return rsa_values
 
 
-def preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_unit_index_list):
+def preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_unit_index_list,
+                                  net_str, layer_str, preprocess_data_to_file=True, preprocessed_data_dir_path=None,
+                                  similarity_metric='cosine_similarity'):
+
+    file_name = f'rsa_{net_str}_{layer_str}_metric_{similarity_metric}.pkl'
+    file_path = join(preprocessed_data_dir_path, file_name)
+    #check if the file exists
+    if os.path.exists(file_path) and preprocess_data_to_file:
+        df_rsa = pd.read_pickle(file_path)
+        return df_rsa
+
+    # Copy the dictionaries to avoid modifying the originals
+    df_dict_copy = df_dict.copy()
+    image_dict_copy = image_dict.copy()
     # Initialize the DataFrame structure using the first network and unit
     first_unit = complete_unit_index_list[0]
-    df_first_unit = df_dict[first_unit]
+    df_first_unit = df_dict_copy[first_unit]
     df_rsa = initialize_df_structure(df_first_unit, network_list, complete_unit_index_list)
 
     # Preprocess the data before the loop
     for unit, df in df_dict.items():
         unit_scores_str = f'scores_{unit}'
-        preprocess_dataframe(df, unit_scores_str)
+        df_dict_copy[unit] = preprocess_dataframe(df, unit_scores_str)
 
     # Iterate over each network
     for net in network_list:
@@ -196,13 +223,19 @@ def preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_un
 
         # Call function to compute RSA values
         for unit in complete_unit_index_list:
-            df = df_dict[unit]
-            image_list = image_dict[unit]
+            df = df_dict_copy[unit]
+            image_list = image_dict_copy[unit]
             control_tensor = image_list[df['type'].eq('none').idxmax()].to(torch.device('cuda:0'))
             control_output = torch.nn.functional.softmax(scorer.model(control_tensor), dim=1)
 
             # Call function to add column and update DataFrame
-            update_df_with_rsa(df_rsa, df, unit, net, compute_rsa_values(df, image_list, scorer, control_output))
+            update_df_with_rsa(df_rsa, df, unit, net,
+                               compute_rsa_values(df, image_list, scorer, control_output,
+                                                  similarity_metric=similarity_metric))
+
+    # save the dataframe
+    if preprocess_data_to_file:
+        df_rsa.to_pickle(file_path)
 
     return df_rsa
 
@@ -221,8 +254,15 @@ def initialize_df_structure(df, network_list, complete_unit_index_list):
 
 
 #%%
+import logging
+logging.basicConfig(level=logging.INFO)
+# even less logging
+# logging.getLogger().setLevel(logging.WARNING)
 
-def preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list, preprocess_data_to_file=True, perturbation_pattern=None, preprocessed_data_dir_path=None):
+def preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list,
+                                    preprocess_data_to_file=True,
+                                    overwrite=False,
+                                    perturbation_pattern=None, preprocessed_data_dir_path=None):
     """
     Preprocess silencing data into DataFrames and save them to files.
 
@@ -243,6 +283,22 @@ def preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_i
     df_dict = {}
     image_dict = {}
 
+    file_name_df = f'{net_str}_{layer_str}_dataframes_dict.pkl'
+    file_name_images = f'{net_str}_{layer_str}_images_dict.pkl'
+    file_path_df = join(preprocessed_data_dir_path, file_name_df)
+    file_path_images = join(preprocessed_data_dir_path, file_name_images)
+
+
+    # Check if preprocessed data already exists
+    if not overwrite:
+        if os.path.exists(file_path_df) and os.path.exists(file_path_images):
+            # print("Preprocessed data already exists. Loading from files...")
+            logging.info("Preprocessed data already exists. Loading from files...")
+            with open(file_path_df, 'rb') as f_df, open(file_path_images, 'rb') as f_images:
+                df_dict = pickle.load(f_df)
+                image_dict = pickle.load(f_images)
+            return df_dict, image_dict
+
     for unit in tqdm(complete_unit_index_list, desc="Processing units"):
         # Get the directories of all the experiments for a given unit
         unit_data_dirs = anevo.get_unit_data_dirs(rootdir, net_str, layer_str, unit,
@@ -259,13 +315,20 @@ def preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_i
 
     # Save DataFrames and image data to files
     if preprocess_data_to_file:
-        print("Saving preprocessed data to files...")
-        file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
-        with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
-            pickle.dump(df_dict, f)
-        file_name = f'{net_str}_{layer_str}_image_dict.pkl'
-        with open(join(preprocessed_data_dir_path, file_name), 'wb') as f:
-            pickle.dump(image_dict, f)
+        try:
+            # Save DataFrames to file
+            with open(file_path_df, 'wb') as f_df:
+                pickle.dump(df_dict, f_df)
+            logging.info(f"Saved {file_name_df}")
+
+            # Save image data to file
+            with open(file_path_images, 'wb') as f_images:
+                pickle.dump(image_dict, f_images)
+            logging.info(f"Saved {file_name_images}")
+
+        except Exception as e:
+            logging.error(f"Error occurred while saving preprocessed data: {e}")
+
 
     return df_dict, image_dict
 #%%
@@ -310,6 +373,26 @@ net_str = 'alexnet-single-neuron_Caos-03112024-003'
 net_str = 'alexnet-single-neuron_Caos-03122024-002'
 net_str = 'alexnet-single-neuron_Caos-03132024-002'
 net_str = 'alexnet-single-neuron_Caos-03142024-003'
+net_str = 'alexnet-single-neuron_Caos-03182024-002'
+net_str = 'alexnet-single-neuron_Caos-03202024-003'
+net_str = 'alexnet-single-neuron_Caos-03212024-002'
+net_str = 'alexnet-single-neuron_Caos-03222024-002'
+net_str = 'alexnet-single-neuron_Caos-03252024-002'
+net_str = 'alexnet-single-neuron_Caos-03262024-002'
+net_str = 'alexnet-single-neuron_Caos-03292024-002'
+net_str = 'alexnet-single-neuron_Caos-04012024-002'
+net_str = 'alexnet-single-neuron_Caos-04022024-002'
+net_str = 'alexnet-single-neuron_Caos-04052024-002'
+net_str = 'alexnet-single-neuron_Caos-04092024-002'
+net_str = 'alexnet-single-neuron_Caos-04102024-002'
+net_str = 'alexnet-single-neuron_Caos-04112024-002'
+net_str = 'alexnet-single-neuron_Diablito-12042024-002'
+net_str = 'alexnet-single-neuron_Caos-04162024-002' # control bad fit
+net_str = 'alexnet-single-neuron_Caos-04172024-002' # control bad fit
+net_str = 'alexnet-single-neuron_Diablito-19042024-002'
+net_str = 'alexnet-single-neuron_Diablito-22042024-002'
+net_str = 'alexnet-single-neuron_Diablito-24042024-002'
+net_str = 'alexnet-single-neuron_Diablito-25042024-002'
 
 
 if any(s in net_str for s in ['alexnet-eco', 'resnet50']):
@@ -341,21 +424,102 @@ complete_unit_index_list = [key for key, value in complete_unit_indices.items() 
 imagenette_units = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
 
 # assert set(imagenette_units + [373]).issubset(set(complete_unit_index_list))
-#%%
-
-preprocess_data_to_file = True
-
-# Compile the single unit data into a dictionary of dataframes and images
-df_dict, image_dict = preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list,
-                                                      preprocess_data_to_file=True,
-                                                      perturbation_pattern=perturbation_pattern,
-                                                      preprocessed_data_dir_path=preprocessed_data_dir_path)
 
 #%%
-# load dataframes and images from file
-file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
-with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
-    df_dict = pickle.load(f)
+import zlib
+
+compile_all_units = True
+
+net_str_list = [
+    # 'alexnet-single-neuron_Caos-12192023-005',
+    'alexnet-single-neuron_Caos-12202023-003',
+    'alexnet-single-neuron_Caos-01162024-010',
+    'alexnet-single-neuron_Caos-01172024-006',
+    'alexnet-single-neuron_Caos-01182024-005',
+    'alexnet-single-neuron_Caos-01252024-009',
+    'alexnet-single-neuron_Caos-02082024-005',
+    'alexnet-single-neuron_Caos-02092024-006',
+    'alexnet-single-neuron_Caos-02132024-007',
+    'alexnet-single-neuron_Caos-02152024-006',
+    'alexnet-single-neuron_Caos-02202024-007',
+    'alexnet-single-neuron_Caos-02212024-005',
+    'alexnet-single-neuron_Caos-02222024-005',
+    'alexnet-single-neuron_Caos-02272024-005',
+    'alexnet-single-neuron_Caos-02292024-007',
+    'alexnet-single-neuron_Caos-03052024-005',
+    'alexnet-single-neuron_Caos-03082024-002',
+    'alexnet-single-neuron_Caos-03112024-003',
+    'alexnet-single-neuron_Caos-03122024-002',
+    'alexnet-single-neuron_Caos-03132024-002',
+    'alexnet-single-neuron_Caos-03142024-003',
+    'alexnet-single-neuron_Caos-03182024-002',
+    'alexnet-single-neuron_Caos-03202024-003',
+    'alexnet-single-neuron_Caos-03212024-002',
+    'alexnet-single-neuron_Caos-03222024-002',
+    'alexnet-single-neuron_Caos-03252024-002',
+    'alexnet-single-neuron_Caos-03262024-002',
+    'alexnet-single-neuron_Caos-03292024-002',
+    'alexnet-single-neuron_Caos-04012024-002',
+    'alexnet-single-neuron_Caos-04022024-002',
+    'alexnet-single-neuron_Caos-04052024-002',
+    'alexnet-single-neuron_Caos-04092024-002',
+    'alexnet-single-neuron_Caos-04102024-002',
+    'alexnet-single-neuron_Caos-04112024-002',
+    'alexnet-single-neuron_Diablito-12042024-002',
+    'alexnet-single-neuron_Caos-04162024-002', # control bad fit
+    'alexnet-single-neuron_Caos-04172024-002', # control bad fit
+    'alexnet-single-neuron_Diablito-19042024-002',
+    'alexnet-single-neuron_Diablito-22042024-002'
+]
+
+net_to_exclude = [
+    'alexnet-single-neuron_Caos-04162024-002', # control bad fit
+    'alexnet-single-neuron_Caos-04172024-002', # control bad fit
+]
+
+if compile_all_units:
+
+    crc32_hashes = [zlib.crc32(s.encode()) & 0xFFFFFFFF for s in net_str_list]
+
+    complete_unit_index_list = [0]
+    df_dict = {}
+    image_dict = {}
+    # Iterate over complete_unit_index_list
+    for net_str_index, tmp_net_str in tqdm(zip(crc32_hashes, net_str_list)):
+        complete_unit_index = complete_unit_index_list[0]
+        df_dict_tmp, image_dict_tmp = preprocess_silencing_data_to_df(rootdir, tmp_net_str, layer_str, complete_unit_index_list,
+                                                              preprocess_data_to_file=True,
+                                                              perturbation_pattern=perturbation_pattern,
+                                                              preprocessed_data_dir_path=preprocessed_data_dir_path)
+
+        print(f'Processing {tmp_net_str} {layer_str} {complete_unit_index}')
+        # Rename the column in df_dict_tmp[complete_unit_index] to scores_(net_str_index)
+        df_dict_tmp[complete_unit_index]['scores_' + str(net_str_index)] = df_dict_tmp[complete_unit_index].pop('scores_' + str(complete_unit_index))
+
+        # Add the new dictionary to a master dictionary with the net_str_index as key
+        df_dict[net_str_index] = df_dict_tmp[complete_unit_index]
+        image_dict[net_str_index] = image_dict_tmp[complete_unit_index]
+
+
+    complete_unit_index_list = crc32_hashes
+    # index of network to exclude
+    net_to_exclude_index = [i for i, net in enumerate(net_str_list) if net in net_to_exclude]
+    units_to_exclude = [complete_unit_index_list[i] for i in net_to_exclude_index]
+
+else:
+    preprocess_data_to_file = True
+
+    # Compile the single unit data into a dictionary of dataframes and images
+    df_dict, image_dict = preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list,
+                                                          preprocess_data_to_file=True,
+                                                          perturbation_pattern=perturbation_pattern,
+                                                          preprocessed_data_dir_path=preprocessed_data_dir_path)
+
+
+    # load dataframes and images from file
+    file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
+    with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
+        df_dict = pickle.load(f)
 
 
 #%%
@@ -418,7 +582,12 @@ params = {
 # make a grid of 4x3 axes for plotting, one for each unit
 with plt.rc_context(params):
     # TODO make plotting adaptable to the number of units
-    fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(14, 9), dpi=300, sharex=True, sharey=True)
+    nrows=4
+    ncols=np.ceil(len(complete_unit_index_list) / nrows).astype(int)
+    if compile_all_units:
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(ncols*2, nrows*2), dpi=300, sharex=True, sharey=True)
+    else:
+        fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(14, 9), dpi=300, sharex=True, sharey=True)
 
 for ii, unit in enumerate(complete_unit_index_list):
     # now preprocess the dataframe to extract maximum scores and images
@@ -432,7 +601,13 @@ for ii, unit in enumerate(complete_unit_index_list):
     df.type = df.type.astype("string")
     # df = df.reset_index(names='list_index') ## changed to inplace in loading function
     # with plt.rc_context(params):
-    plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=axes[ii // 4, ii % 4], params_dict=params)
+    plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=axes[ii // ncols, ii % ncols], params_dict=params)
+    if ii != 0:
+        axes[ii // ncols, ii % ncols].get_legend().remove()
+    # remove axis labels for akk but bottom left plot
+    if ii // ncols != nrows - 1 or ii % ncols != 0:
+        axes[ii // ncols, ii % ncols].set_xlabel('')
+        axes[ii // ncols, ii % ncols].set_ylabel('')
 
 fig.tight_layout()
 # save figure
@@ -445,117 +620,54 @@ plt.show()
 
 #%%
 
-file_name = f'{net_str}_{layer_str}_images_dict.pkl'
-with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
-    image_dict = pickle.load(f)
+
+# file_name = f'{net_str}_{layer_str}_images_dict.pkl'
+# # file_name = f'{net_str}_{layer_str}_image_dict.pkl'
+# with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
+#     image_dict = pickle.load(f)
 
 
 #%%
 
 network_list = ['alexnet',
                 'resnet50', 'resnet50_linf0.5', 'resnet50_linf1', 'resnet50_linf2', 'resnet50_linf4', 'resnet50_linf8']
-#%%
-# net = 'alexnet'
 
-if preprocess_data_to_file:
-    for inet, net in enumerate(network_list):
-        scorer = TorchScorer(net)
-
-        for ii, unit in enumerate(complete_unit_index_list):
-            # now preprocess the dataframe to extract maximum scores and images
-            df = df_dict[unit]
-            unit_scores_str = f'scores_{unit}'
-            # for each row in df the generator column is a list, find the list indexes of generator == 'fc6'
-            # and select the corresponding scores
-            # for index, row in df.iterrows():
-            #     # find the indexes of the generator list where the generator is fc6
-            #     fc6_indexes = [i for i, generator in enumerate(row.generator) if 'fc6' in generator]
-            #     # select the scores corresponding to the fc6_indexes
-            #     fc6_scores = [row[unit_scores_str][i] for i in fc6_indexes]
-            #     # replace the scores list with the fc6_scores list
-            #     df.loc[index, unit_scores_str] = fc6_scores
-            #todo fix here
-
-            # copy df not to modify the original
-            if ii == 0 and inet == 0:
-                df_rsa = df.copy()
-                df_rsa.drop(columns=[unit_scores_str], inplace=True)
-                df_rsa.reset_index(inplace=True)
-                # set index to original index, type and strength
-                df_rsa = df_rsa.set_index(['index', 'type', 'strength'])
-                # create a multiindex for the columns
-                net_columns = pd.MultiIndex.from_tuples([(unit, net) for net in network_list], names=['unit', 'test_network'])
-                df_rsa = df_rsa.reindex(columns=net_columns)
-            else:
-                # add the new column to the existing dataframe
-                df_rsa[unit, net] = np.nan
-
-
-            # df[unit_scores_str] = df[unit_scores_str].astype("float")
-            df.type = df.type.astype("string")
-
-            image_list = image_dict[unit]
-
-            control_tensor = image_list[np.where(df.type == 'none')[0][0]]  # here one image is from one evolution
-            control_tensor = control_tensor.to(torch.device('cuda:0'))
-            control_output = scorer.model(control_tensor)
-            control_output = torch.nn.functional.softmax(control_output, dim=1)
-
-            for index, row in df.iterrows():
-                # check that df type and strength of the row match the ones of df_rsa
-                multiindex = (index, row.type, row.strength)
-                # print(df_rsa.loc[multiindex, (unit, net)])
-                # assert check is not needed if already addressing by multiindex
-                # assert (df_rsa.loc[index, 'type'] == row.type) and (df_rsa.loc[index, 'strength'] == row.strength)
-                # get the image list from image_list corresponding to the list_index
-                silenced_images_tensor = image_list[index].to(torch.device('cuda:0'))
-                silenced_output = scorer.model(silenced_images_tensor)
-                # compute softmax
-                silenced_output = torch.nn.functional.softmax(silenced_output, dim=1)
-                #compute the cosine similarity using torchmetrics
-                cosine_similarity = pairwise_cosine_similarity(silenced_output, control_output)
-                # extract the upper triangular part of the matrix
-                cosine_similarity = torch.triu(cosine_similarity, diagonal=1)
-                # compute the mean of the cosine similarity
-                mean_cosine_similarity = torch.mean(cosine_similarity).detach().cpu().numpy()
-                # add the mean cosine similarity to the dataframe in a new hierarchical column with level 0 unit, and
-                # level 1 mean_cosine_similarity
-                df_rsa.loc[multiindex, (unit, net)] = mean_cosine_similarity
-
-        # melt dataframe on columns given by complete_unit_index_list, set new column name to mean_cosine_similarity
-        # df_rsa = df_rsa.melt(id_vars=['type', 'strength'], value_vars=complete_unit_index_list, var_name='unit',
-        #                      value_name=f'mean_cosine_similarity_{net}')
-
-    # save the dataframe
-    file_name = f'rsa_{net_str}_{layer_str}.pkl'
-    df_rsa.to_pickle(join(preprocessed_data_dir_path, file_name))
-#%%
-
-# Call the function with appropriate arguments
-df_rsa = preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_unit_index_list)
-
+similarity_metric = 'cosine_similarity'
+similarity_metric = 'euclidean_norm'
 # Save the DataFrame if preprocessing to file is enabled
-# if preprocess_data_to_file:
-#     file_name = f'rsa_{net_str}_{layer_str}.pkl'
-#     df_rsa.to_pickle(join(preprocessed_data_dir_path, file_name))
-#%%
-# load the dataframe
-file_name = f'rsa_{net_str}_{layer_str}.pkl'
-df_rsa = pd.read_pickle(join(preprocessed_data_dir_path, file_name))
+if compile_all_units:
+    file_name = f'rsa_all_neurons_{layer_str}_metric_{similarity_metric}.pkl'
+    if os.path.exists(join(preprocessed_data_dir_path, file_name)):
+        df_rsa = pd.read_pickle(join(preprocessed_data_dir_path, file_name))
+    else:
+        # todo here we can loop over the already saved single unit dataframes
+        preprocess_data_to_file = False
+        df_rsa = preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_unit_index_list,
+                                               net_str, layer_str, preprocess_data_to_file, preprocessed_data_dir_path,
+                                               similarity_metric=similarity_metric)
+        df_rsa.to_pickle(join(preprocessed_data_dir_path, file_name))
+else:
+    df_rsa = preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_unit_index_list,
+                                           net_str, layer_str, preprocess_data_to_file, preprocessed_data_dir_path,
+                                           similarity_metric=similarity_metric)
+
+
+
 #%%
 # recover a dataframe with the mean cosine similarity for each type and strength in a tabular format
-df_rsa_table = df_rsa.stack().stack().reset_index(name='mean_cosine_similarity')
+df_rsa_table = df_rsa.stack().stack().reset_index(name=f'mean_{similarity_metric}')
 # average mean_cosine_similarity over the test_network level when grouping by type, strength and unit
-df_rsa_table = df_rsa_table.groupby(['type', 'strength', 'unit']).mean_cosine_similarity.mean().reset_index()
+df_rsa_table = df_rsa_table.groupby(['type', 'strength', 'unit'])[f'mean_{similarity_metric}'].mean().reset_index()
 
+
+# drop units in units_to_exclude
+# df_rsa_table = df_rsa_table[~df_rsa_table.unit.isin(units_to_exclude)]
 #%%
 # divide the mean_cosine_similarity by the control mean_cosine_similarity
 for group_id, group_data in df_rsa_table.groupby(['unit']):
-    control_mean_cosine_similarity = group_data[group_data.type == 'none'].mean_cosine_similarity.values[0]
-    df_rsa_table.loc[df_rsa_table.unit == group_id, 'norm_mean_cosine_similarity'] = \
-        df_rsa_table.loc[df_rsa_table.unit == group_id, 'mean_cosine_similarity'] / control_mean_cosine_similarity
-
-#%%
+    control_mean_similarity = group_data[group_data.type == 'none'][f'mean_{similarity_metric}'].values.mean()
+    df_rsa_table.loc[df_rsa_table.unit == group_id, f'norm_mean_{similarity_metric}'] = \
+        df_rsa_table.loc[df_rsa_table.unit == group_id, f'mean_{similarity_metric}'] / control_mean_similarity
 
     # df_rsa_table.loc[df_rsa_table.unit == unit, 'mean_cosine_similarity'] /= df_rsa_table[df_rsa_table.type == 'none'].mean_cosine_similarity.values.mean()
 #%%
@@ -593,9 +705,13 @@ def plot_rsa(ax, df_rsa_table, net_str, layer_str, y_var='mean_cosine_similarity
         sns.lineplot(data=df_rsa_table[df_rsa_table.type == type_to_plot], x='strength', y=y_var, hue='unit',
                      ax=ax, palette='tab20', alpha=1, lw=3)
     if y_var == 'norm_mean_cosine_similarity':
-        plt.ylabel('normalized cosine similarity\n(control vs silencing)')
-    else:
-        plt.ylabel('cosine similarity\n(control vs silencing)')
+        ax.set_ylabel('normalized cosine similarity\n(control vs silencing)')
+    elif y_var == 'mean_cosine_similarity':
+        ax.set_ylabel('cosine similarity\n(control vs silencing)')
+    elif y_var == 'mean_euclidean_norm':
+        ax.set_ylabel('euclidean norm\n(control vs silencing)')
+    elif y_var == 'norm_mean_euclidean_norm':
+        ax.set_ylabel('normalized euclidean norm\n(control vs silencing)')
     plt.xlabel('silencing strength')
     plt.title(f'{net_str} {layer_str}')
     # square axes, with unequal aspect ratio
@@ -605,8 +721,10 @@ def plot_rsa(ax, df_rsa_table, net_str, layer_str, y_var='mean_cosine_similarity
     # plt.tight_layout()
     # plt.show()
 
+#%%
 import matplotlib.gridspec as gridspec
 # make a figure
+# fig = plt.figure(figsize=(20, 8)) # without legends is (20, 8)
 fig = plt.figure(figsize=(20, 8)) # without legends is (20, 8)
 # make 8 axes in a 2x4 grid
 gs = gridspec.GridSpec(2, 4, figure=fig)
@@ -624,9 +742,19 @@ params = {
    'figure.figsize': [21, 7]
    }
 
+
+if similarity_metric == 'cosine_similarity':
+    y_var = 'mean_cosine_similarity'
+    y_var_norm = 'norm_mean_cosine_similarity'
+elif similarity_metric == 'euclidean_norm':
+    y_var = 'mean_euclidean_norm'
+    y_var_norm = 'norm_mean_euclidean_norm'
+
+var_names_list = [y_var, y_var_norm]
+
 with plt.rc_context(params):
     for itype, type in enumerate(['all', 'inh', 'exc', 'abs']):
-        for jnorm, yvar in enumerate(['mean_cosine_similarity', 'norm_mean_cosine_similarity']):
+        for jnorm, yvar in enumerate(var_names_list):
             ax_tmp = fig.add_subplot(gs[jnorm, itype])
             plot_rsa(ax_tmp, df_rsa_table, net_str, layer_str, y_var=yvar, type_to_plot=type)
             ax_tmp.set_xticks([0, 0.5, 1])
@@ -636,17 +764,22 @@ with plt.rc_context(params):
                 # legend title to empty string
             if type != 'all':
                 ax_tmp.set_title(type)
+            # for biological neurons too many labels
+            ax_tmp.legend().remove()
+
     plt.suptitle(f'{net_str} {layer_str}')
     plt.tight_layout()
 plt.show()
 
-fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength.png'
+fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength_metric_{similarity_metric}.png'
 fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
-fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength.pdf'
+fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_metric_{similarity_metric}.pdf'
 fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
 
 
-
+if compile_all_units:
+    # stop here
+    raise SystemExit
 #%%
 # To get top scoring images, but maybe more efficient to just use the lists and index back as below
 # top_9_df = df.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).apply(lambda group: group.sort_values('scores', ascending=False).head(9))
@@ -656,13 +789,24 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 def plot_topn_imgrid_from_df(df, image_list, layer_str, net_str, unit, n_types, max_n_ims_type, n_top=9):
     # fig = plt.figure(figsize=(21., 6.))
-    fig = plt.figure()
     ncols = max_n_ims_type + 1
     nrows = n_types - 1
+
+    n_images_per_condition = df.generator.apply(len).mean()
+    n_im_row = int(np.ceil(np.sqrt(n_top)))
+    # size per subplot
+    subplot_size = 2
+    if n_images_per_condition < n_top:
+        fig_size = (ncols * subplot_size * int(n_images_per_condition / n_im_row), nrows * subplot_size *0.8)
+    else:
+        fig_size = (ncols * subplot_size, nrows * subplot_size)
+    print(f' fig_size: {fig_size}')
+    fig = plt.figure(figsize=fig_size, dpi=300)
     grid = ImageGrid(fig, 111,  # similar to subplot(111)
                      nrows_ncols=(nrows, ncols),  # creates 2x2 grid of axes
                      axes_pad=0.35,  # pad between axes in inch.
                      )
+
 
     for ii, (name, group) in enumerate(
             df.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).head(1).groupby('type')):
@@ -702,10 +846,12 @@ def plot_topn_imgrid_from_df(df, image_list, layer_str, net_str, unit, n_types, 
                 plt.axis('off')
                 grid[0].set_visible(False)
                 grid[ncols * (nrows - 1)].set_visible(False)
-
+            plt.axis('off')
+            grid[0].set_visible(False)
+            grid[ncols * (nrows - 1)].set_visible(False)
 
     # fig.suptitle(f'{net_str} {layer_str}')
-    fig.suptitle(f'{net_str} {layer_str} unit {unit}')
+    fig.suptitle(f'{net_str} \n {layer_str} unit {unit}')
 
     fig.tight_layout()
     fig_filename = os.path.join(figures_dir, f'{net_str}_{layer_str}_{unit}_preferred_top{n_top}_images.pdf')
@@ -746,12 +892,17 @@ for key, value in df_dict.items():
     df_temp = df_temp.rename(columns={score_col: 'scores'})
     df_temp = df_temp.reset_index(names='old_index')
     n_types = len(pd.unique(df_temp.sort_values(['type', 'strength']).type))
-    max_n_ims_type = df_temp.sort_values(['type', 'strength']).groupby('type').apply(len).max()
+    n_top = df_temp.sort_values(['type', 'strength']).groupby(['type', 'strength']).apply(len).max()
+    # max_n_ims_type is the number of silencing strengths for the type with the most silencing strengths
+    max_n_ims_type = df_temp.groupby(['type', 'strength']).count().reset_index().groupby('type')['strength'].nunique().max()
+
     # plot_topn_imgrid_from_df(df_temp, image_dict[0], n_types=4, max_n_ims_type=10, n_top=9)
 
     with mpl.rc_context(params):
-        plot_topn_imgrid_from_df(df_temp, image_dict[key], layer_str, net_str, unit, n_types=4, max_n_ims_type=10, n_top=20)
-
+        plot_topn_imgrid_from_df(df_temp, image_dict[key], layer_str, net_str, unit, n_types=4,
+                                 max_n_ims_type=max_n_ims_type, n_top=max(20, int(np.sqrt(n_top))**2))
+    # break
+    image_list = image_dict[key]
     top_n = 9
     for ii, (name, group) in enumerate(
             df_temp.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).head(1).groupby('type')):
@@ -776,11 +927,93 @@ for key, value in df_dict.items():
             for i, image in enumerate(images):
                 image_filename = os.path.join(exp_images_dir, f'{net_str}_{layer_str}_{unit}_preferred_top{top_n}'
                                                            f'_{name}{row_data.strength}_image{i}.png')
+                # uncomment to save images
                 save_image(image, image_filename)
             # top9_im_grid = anevo.get_top_n_im_grid(scores=df_temp[df_temp.old_index == list_index].scores.tolist(),
             #                                        images=image_list[list_index], top_n=n_top)
 
+eeeeeee
 
+#%%
+
+# section header in comments
+#====================================================================================================
+# Plotting images across experiments
+#====================================================================================================
+
+
+for unit, df_temp in df_dict.items():
+    print(unit)
+    df_temp = df_temp.copy()
+
+    # Explode score column
+    score_col = [col for col in df_temp.columns if 'scores' in col][0]
+    df_temp = df_temp.explode(score_col)
+    df_temp.rename(columns={score_col: 'scores'}, inplace=True)
+    df_temp.reset_index(inplace=True)
+    df_temp.rename(columns={'index': 'old_index'}, inplace=True)
+
+    # Calculate necessary values
+    n_types = len(df_temp['type'].unique())
+    n_top = df_temp.groupby(['type', 'strength']).size().max()
+    max_n_ims_type = df_temp.groupby(['type', 'strength']).size().reset_index().groupby('type')[
+        'strength'].nunique().max()
+
+    # with mpl.rc_context(params):
+    #     # Plot all images
+    #     all_ims_grid = make_grid(image_dict[unit][1], nrow=2)
+    #     plt.imshow(all_ims_grid.permute(1, 2, 0))
+    #     plt.axis('off')
+    #     plt.title(f'{net_str} {layer_str} unit {unit}')
+    #     plt.show()
+
+    # Get top images for each type
+    image_list = image_dict[unit]
+    top_n = 4
+    tmp_grid_list = []
+
+    for name, group in df_temp.sort_values(['type', 'strength'], ascending=True).groupby(['type', 'strength']).head(
+            1).groupby('type'):
+        for _, row_data in group.iterrows():
+            list_index = row_data.old_index
+            top_inds = anevo.list_argsort(df_temp[df_temp.old_index == list_index].scores.tolist(), reverse=True)[
+                       :top_n]
+            images = image_list[list_index][top_inds, ...]
+            tmp_grid = make_grid(images, nrow=2, padding=5)
+            tmp_grid_list.append(tmp_grid)
+
+    # Add padding to tmp_grid_list
+    padded_tmp_grid_list = [tmp_grid_list[0]] + tmp_grid_list[:n_types] + \
+                           [tmp_grid_list[0]] + tmp_grid_list[n_types: 2 * n_types] + \
+                           [tmp_grid_list[0]] + tmp_grid_list[2 * n_types:-1]
+
+    # Plot grid of images
+    indices_to_subplot = [-1] + list(range(0, n_types)) + [-1] + list(range(n_types, 2 * n_types)) + [-1] + list(
+        range(2 * n_types, 3 * n_types))
+    fig, axes = plt.subplots(nrows=3, ncols=n_types + 1, figsize=(1.5 * 5, 1.5 * 3), dpi=300)
+    for ii, tmp_grid in enumerate(padded_tmp_grid_list):
+        plt.sca(axes[ii // (n_types + 1), ii % (n_types + 1)])
+        plt.imshow(tmp_grid_list[indices_to_subplot[ii]].permute(1, 2, 0))
+        plt.axis('off')
+        plt.title(f'{group_keys[indices_to_subplot[ii]][0]} {group_keys[indices_to_subplot[ii]][1]}')
+    plt.tight_layout()
+    plt.show()
+
+
+#%%
+# add the last list to positions 0, ntypes, 2*ntypes
+padded_tmp_grid_list = [tmp_grid_list[0]] + tmp_grid_list[:n_types] + \
+                [tmp_grid_list[0]] + tmp_grid_list[n_types: 2*n_types] +\
+                [tmp_grid_list[0]] + tmp_grid_list[2*n_types:-1]
+# make a list of group names after type and strength
+group_keys = list(df_temp.groupby(['type', 'strength']).groups.keys())
+fig, ax = plt.subplots(figsize=(15, 9), dpi=300)
+# make a grid of the first 12 images from tmp_grid_list
+all_ims_grid = make_grid(padded_tmp_grid_list, nrow=5, padding=30, pad_value=1)
+plt.imshow(all_ims_grid.permute(1, 2, 0))
+plt.axis('off')
+plt.title('{labels[ii][0]}')
+plt.show()
 
 #%%
 ssdxx
