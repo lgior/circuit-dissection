@@ -351,49 +351,61 @@ net_str = 'vgg16'
 # net_str = 'alexnet'  # 'resnet50', 'alexnet-eco-080'
 # net_str = 'resnet50'  # 'resnet50', 'alexnet-eco-080'
 # net_str = 'resnet50_linf0.5'
-net_str = 'alexnet-single-neuron2'
-net_str = 'alexnet-single-neuron_Caos-12192023-005'
-net_str = 'alexnet-single-neuron_Caos-12202023-003'
-net_str = 'alexnet-single-neuron_Caos-01162024-010'
-net_str = 'alexnet-single-neuron_Caos-01172024-006'
-net_str = 'alexnet-single-neuron_Caos-01182024-005'
-net_str = 'alexnet-single-neuron_Caos-01252024-009'
-net_str = 'alexnet-single-neuron_Caos-02082024-005'
-net_str = 'alexnet-single-neuron_Caos-02092024-006'
-net_str = 'alexnet-single-neuron_Caos-02132024-007'
-net_str = 'alexnet-single-neuron_Caos-02152024-006'
-net_str = 'alexnet-single-neuron_Caos-02202024-007'
-net_str = 'alexnet-single-neuron_Caos-02212024-005'
-net_str = 'alexnet-single-neuron_Caos-02222024-005'
-net_str = 'alexnet-single-neuron_Caos-02272024-005'
-net_str = 'alexnet-single-neuron_Caos-02292024-007'
-net_str = 'alexnet-single-neuron_Caos-03052024-005'
-net_str = 'alexnet-single-neuron_Caos-03082024-002'
-net_str = 'alexnet-single-neuron_Caos-03112024-003'
-net_str = 'alexnet-single-neuron_Caos-03122024-002'
-net_str = 'alexnet-single-neuron_Caos-03132024-002'
-net_str = 'alexnet-single-neuron_Caos-03142024-003'
-net_str = 'alexnet-single-neuron_Caos-03182024-002'
-net_str = 'alexnet-single-neuron_Caos-03202024-003'
-net_str = 'alexnet-single-neuron_Caos-03212024-002'
-net_str = 'alexnet-single-neuron_Caos-03222024-002'
-net_str = 'alexnet-single-neuron_Caos-03252024-002'
-net_str = 'alexnet-single-neuron_Caos-03262024-002'
-net_str = 'alexnet-single-neuron_Caos-03292024-002'
-net_str = 'alexnet-single-neuron_Caos-04012024-002'
-net_str = 'alexnet-single-neuron_Caos-04022024-002'
-net_str = 'alexnet-single-neuron_Caos-04052024-002'
-net_str = 'alexnet-single-neuron_Caos-04092024-002'
-net_str = 'alexnet-single-neuron_Caos-04102024-002'
-net_str = 'alexnet-single-neuron_Caos-04112024-002'
-net_str = 'alexnet-single-neuron_Diablito-12042024-002'
-net_str = 'alexnet-single-neuron_Caos-04162024-002' # control bad fit
-net_str = 'alexnet-single-neuron_Caos-04172024-002' # control bad fit
-net_str = 'alexnet-single-neuron_Diablito-19042024-002'
-net_str = 'alexnet-single-neuron_Diablito-22042024-002'
-net_str = 'alexnet-single-neuron_Diablito-24042024-002'
-net_str = 'alexnet-single-neuron_Diablito-25042024-002'
+# net_str = 'resnet50_linf1'
+# net_str = 'resnet50_linf2'
+# net_str = 'resnet50_linf4'
+# net_str = 'resnet50_linf8'
+# net_str = 'alexnet-single-neuron2'
+# net_str = 'alexnet-single-neuron_Caos-12192023-005'
+# net_str = 'alexnet-single-neuron_Caos-12202023-003'
+# net_str = 'alexnet-single-neuron_Caos-01162024-010'
+# net_str = 'alexnet-single-neuron_Caos-01172024-006'
+# net_str = 'alexnet-single-neuron_Caos-01182024-005'
+# net_str = 'alexnet-single-neuron_Caos-01252024-009'
+# net_str = 'alexnet-single-neuron_Caos-02082024-005'
+# net_str = 'alexnet-single-neuron_Caos-02092024-006'
+# net_str = 'alexnet-single-neuron_Caos-02132024-007'
+# net_str = 'alexnet-single-neuron_Caos-02152024-006'
+# net_str = 'alexnet-single-neuron_Caos-02202024-007'
+# net_str = 'alexnet-single-neuron_Caos-02212024-005'
+# net_str = 'alexnet-single-neuron_Caos-02222024-005'
+# net_str = 'alexnet-single-neuron_Caos-02272024-005'
+# net_str = 'alexnet-single-neuron_Caos-02292024-007'
+# net_str = 'alexnet-single-neuron_Caos-03052024-005'
+# net_str = 'alexnet-single-neuron_Caos-03082024-002'
+# net_str = 'alexnet-single-neuron_Caos-03112024-003'
+# net_str = 'alexnet-single-neuron_Caos-03122024-002'
+# net_str = 'alexnet-single-neuron_Caos-03132024-002'
+# net_str = 'alexnet-single-neuron_Caos-03142024-003'
+# net_str = 'alexnet-single-neuron_Caos-03182024-002'
+# net_str = 'alexnet-single-neuron_Caos-03202024-003'
+# net_str = 'alexnet-single-neuron_Caos-03212024-002'
+# net_str = 'alexnet-single-neuron_Caos-03222024-002'
+# net_str = 'alexnet-single-neuron_Caos-03252024-002'
+# net_str = 'alexnet-single-neuron_Caos-03262024-002'
+# net_str = 'alexnet-single-neuron_Caos-03292024-002'
+# net_str = 'alexnet-single-neuron_Caos-04012024-002'
+# net_str = 'alexnet-single-neuron_Caos-04022024-002'
+# net_str = 'alexnet-single-neuron_Caos-04052024-002'
+# net_str = 'alexnet-single-neuron_Caos-04092024-002'
+# net_str = 'alexnet-single-neuron_Caos-04102024-002'
+# net_str = 'alexnet-single-neuron_Caos-04112024-002'
+# net_str = 'alexnet-single-neuron_Diablito-12042024-002'
+# net_str = 'alexnet-single-neuron_Caos-04162024-002' # control bad fit
+# net_str = 'alexnet-single-neuron_Caos-04172024-002' # control bad fit
+# net_str = 'alexnet-single-neuron_Diablito-19042024-002'
+# net_str = 'alexnet-single-neuron_Diablito-22042024-002'
+# net_str = 'alexnet-single-neuron_Diablito-24042024-002'
+# net_str = 'alexnet-single-neuron_Diablito-25042024-002'
+# net_str = 'alexnet-single-neuron_Caos-04302024-002'
+# net_str = 'alexnet-single-neuron_Diablito-07052024-002'
+# net_str = 'alexnet-single-neuron_Caos-05092024-002'
+# net_str = 'alexnet-single-neuron_Caos-05132024-002'
+# net_str = 'alexnet-single-neuron_Caos-05142024-003'
+net_str = 'alexnet-single-neuron_Diablito-16052024-002'
 
+experiment_class = 'imagenette'
+experiment_class = 'neurons'
 
 if any(s in net_str for s in ['alexnet-eco', 'resnet50']):
     layer_str = '.Linearfc'  # for resnet50 and alexnet-eco-080
@@ -406,10 +418,14 @@ perturbation_regex = r'.*(_kill.*)$'
 perturbation_pattern = '_kill_topFraction_'
 
 full_experiment_suffixes = anevo.get_complete_experiment_list()
-full_experiment_suffixes = anevo.get_complete_experiment_list(exc_inh_weights=[0.2, 0.4, 0.6, 0.8, 1.0],
-                                                              abs_weights=[0.2, 0.4, 0.6, 0.8, 0.99])
-full_experiment_suffixes = anevo.get_complete_experiment_list(exc_inh_weights=[0.25, 0.5, 0.75, 1.0],
-                                                              abs_weights=[0.25, 0.5, 0.75, 0.99])
+if experiment_class == 'imagenette':
+    # this one is for full experiments
+    full_experiment_suffixes = anevo.get_complete_experiment_list(exc_inh_weights=[0.2, 0.4, 0.6, 0.8, 1.0],
+                                                                  abs_weights=[0.2, 0.4, 0.6, 0.8, 0.99])
+elif experiment_class == 'neurons':
+    full_experiment_suffixes = anevo.get_complete_experiment_list(exc_inh_weights=[0.25, 0.5, 0.75, 1.0],
+                                                                  abs_weights=[0.25, 0.5, 0.75, 0.99])
+
 silencing_experiment_suffixes = []
 for suffix in full_experiment_suffixes:
     if 'kill' in suffix:
@@ -423,12 +439,14 @@ complete_unit_index_list = [key for key, value in complete_unit_indices.items() 
 
 imagenette_units = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
 
-# assert set(imagenette_units + [373]).issubset(set(complete_unit_index_list))
+if experiment_class == 'imagenette':
+    assert set(imagenette_units + [373]).issubset(set(complete_unit_index_list))
 
 #%%
 import zlib
 
 compile_all_units = True
+# compile_all_units = False
 
 net_str_list = [
     # 'alexnet-single-neuron_Caos-12192023-005',
@@ -469,7 +487,14 @@ net_str_list = [
     'alexnet-single-neuron_Caos-04162024-002', # control bad fit
     'alexnet-single-neuron_Caos-04172024-002', # control bad fit
     'alexnet-single-neuron_Diablito-19042024-002',
-    'alexnet-single-neuron_Diablito-22042024-002'
+    'alexnet-single-neuron_Diablito-22042024-002',
+    'alexnet-single-neuron_Diablito-24042024-002',
+    'alexnet-single-neuron_Diablito-25042024-002',
+    'alexnet-single-neuron_Caos-04302024-002',
+    'alexnet-single-neuron_Diablito-07052024-002',
+    'alexnet-single-neuron_Caos-05092024-002',
+    'alexnet-single-neuron_Caos-05132024-002',
+    'alexnet-single-neuron_Caos-05142024-003',
 ]
 
 net_to_exclude = [
@@ -541,7 +566,7 @@ def plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=None, params_dict=
         ax_scatter = sns.scatterplot(data=df, x=anevo.jitter(df.strength, 0.008), y=score_name, hue='type', alpha=0.5,
                                      hue_order=['abs', 'inh', 'exc', 'none'],
                                      palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'],
-                                     ec='w', s=80)
+                                     ec='w', s=50)
         # sns.stripplot(df, x='strength', y='scores', hue='type', alpha=0.5) # this makes x axis categorical
         # sns.violinplot(df, x='strength', y='scores', hue='type', inner='points')
         # sns.violinplot(data=df, x="strength", y="scores", inner="points", hue='type')
@@ -582,9 +607,9 @@ params = {
 # make a grid of 4x3 axes for plotting, one for each unit
 with plt.rc_context(params):
     # TODO make plotting adaptable to the number of units
-    nrows=4
+    nrows= 3 if experiment_class == 'imagenette' else 4
     ncols=np.ceil(len(complete_unit_index_list) / nrows).astype(int)
-    if compile_all_units:
+    if compile_all_units or experiment_class == 'imagenette':
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(ncols*2, nrows*2), dpi=300, sharex=True, sharey=True)
     else:
         fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(14, 9), dpi=300, sharex=True, sharey=True)
@@ -611,10 +636,16 @@ for ii, unit in enumerate(complete_unit_index_list):
 
 fig.tight_layout()
 # save figure
-fig_name = f'{net_str}_{layer_str}_scores_vs_silencing_strength.png'
-fig.savefig(join(figures_dir, fig_name), dpi=300)
-fig_name = f'{net_str}_{layer_str}_scores_vs_silencing_strength.pdf'
-fig.savefig(join(figures_dir, fig_name), dpi=300)
+if compile_all_units:
+    fig_name = f'all_units_{layer_str}_scores_vs_silencing_strength.png'
+    fig.savefig(join(figures_dir, fig_name), dpi=300)
+    fig_name = f'all_units_{layer_str}_scores_vs_silencing_strength.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300)
+else:
+    fig_name = f'{net_str}_{layer_str}_scores_vs_silencing_strength.png'
+    fig.savefig(join(figures_dir, fig_name), dpi=300)
+    fig_name = f'{net_str}_{layer_str}_scores_vs_silencing_strength.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300)
 plt.show()
 
 
@@ -633,10 +664,10 @@ network_list = ['alexnet',
                 'resnet50', 'resnet50_linf0.5', 'resnet50_linf1', 'resnet50_linf2', 'resnet50_linf4', 'resnet50_linf8']
 
 similarity_metric = 'cosine_similarity'
-similarity_metric = 'euclidean_norm'
+# similarity_metric = 'euclidean_norm'
 # Save the DataFrame if preprocessing to file is enabled
 if compile_all_units:
-    file_name = f'rsa_all_neurons_{layer_str}_metric_{similarity_metric}.pkl'
+    file_name = f'rsa_all_neurons_{layer_str}_metric_{similarity_metric}_neurips.pkl'
     if os.path.exists(join(preprocessed_data_dir_path, file_name)):
         df_rsa = pd.read_pickle(join(preprocessed_data_dir_path, file_name))
     else:
@@ -771,10 +802,17 @@ with plt.rc_context(params):
     plt.tight_layout()
 plt.show()
 
-fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength_metric_{similarity_metric}.png'
-fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
-fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_metric_{similarity_metric}.pdf'
-fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+if compile_all_units:
+    fig_name = f'all_units_{layer_str}_rsa_vs_silencing_strength_metric_{similarity_metric}.png'
+    fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+    fig_name = f'all_units_{layer_str}_rsa_vs_silencing_metric_{similarity_metric}.pdf'
+    fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+else:
+    fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_strength_metric_{similarity_metric}.png'
+    fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+    fig_name = f'{net_str}_{layer_str}_rsa_vs_silencing_metric_{similarity_metric}.pdf'
+    fig.savefig(os.path.join(figures_dir, fig_name), dpi=300, bbox_inches='tight')
+plt.show()
 
 
 if compile_all_units:
@@ -931,6 +969,423 @@ for key, value in df_dict.items():
                 save_image(image, image_filename)
             # top9_im_grid = anevo.get_top_n_im_grid(scores=df_temp[df_temp.old_index == list_index].scores.tolist(),
             #                                        images=image_list[list_index], top_n=n_top)
+#%%
+
+####################### Section to compute and plot the RSA results for all CNNS ############################
+
+
+def get_complete_unit_list(net_str, rootdir):
+    if any(s in net_str for s in ['alexnet-eco', 'resnet50']):
+        layer_str = '.Linearfc'  # for resnet50 and alexnet-eco-080
+    else:
+        layer_str = '.classifier.Linear6'  # for alexnet
+
+    print(f'Possible units to analyze: {anevo.get_recorded_unit_indices(rootdir, net_str, layer_str)}')
+
+    perturbation_regex = r'.*(_kill.*)$'
+    perturbation_pattern = '_kill_topFraction_'
+
+    full_experiment_suffixes = anevo.get_complete_experiment_list()
+
+    full_experiment_suffixes = anevo.get_complete_experiment_list(exc_inh_weights=[0.2, 0.4, 0.6, 0.8, 1.0],
+                                                                  abs_weights=[0.2, 0.4, 0.6, 0.8, 0.99])
+
+    silencing_experiment_suffixes = []
+    for suffix in full_experiment_suffixes:
+        if 'kill' in suffix:
+            silencing_experiment_suffixes.extend(full_experiment_suffixes[suffix])
+
+    complete_unit_indices = anevo.get_complete_experiment_units(
+        rootdir, net_str, layer_str, perturbation_pattern, perturbation_regex, silencing_experiment_suffixes
+    )
+    complete_unit_index_list = [key for key, value in complete_unit_indices.items() if value is None]
+
+    imagenette_units = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
+
+    assert set(imagenette_units + [373]).issubset(set(complete_unit_index_list))
+
+    return complete_unit_index_list, layer_str, perturbation_pattern
+
+def load_fclayer_data_dicts_from_net_str(net_str, rootdir, preprocessed_data_dir_path):
+
+    complete_unit_index_list, layer_str, perturbation_pattern = get_complete_unit_list(net_str, rootdir)
+
+    # Compile the single unit data into a dictionary of dataframes and images
+    df_dict, image_dict = preprocess_silencing_data_to_df(rootdir, net_str, layer_str, complete_unit_index_list,
+                                                          preprocess_data_to_file=True,
+                                                          perturbation_pattern=perturbation_pattern,
+                                                          preprocessed_data_dir_path=preprocessed_data_dir_path)
+
+
+    # load dataframes and images from file
+    file_name = f'{net_str}_{layer_str}_dataframes_dict.pkl'
+    with open(join(preprocessed_data_dir_path, file_name), 'rb') as f:
+        df_dict = pickle.load(f)
+
+    return df_dict, image_dict, complete_unit_index_list, layer_str
+
+
+def get_mean_score_df(net_str, rootdir, preprocessed_data_dir_path):
+    df_dict, image_dict, complete_unit_index_list, layer_str = load_fclayer_data_dicts_from_net_str(net_str, rootdir, preprocessed_data_dir_path)
+
+    df_all_units = pd.DataFrame()
+    for unit, df in df_dict.items():
+        # copy df to avoid modifying the original
+        df = df.copy()
+        unit_scores_str = f'scores_{unit}'
+        df['unit'] = unit
+        # mean of the scores, set as np array
+        df[unit_scores_str] = df[unit_scores_str].apply(lambda x: np.mean(x))
+        # rename the column to scores
+        df.rename(columns={unit_scores_str: 'scores'}, inplace=True)
+
+        if df_all_units.empty:
+            df_all_units = df
+        else:
+            df_all_units = pd.concat([df_all_units, df], axis=0)
+
+    return df_all_units
+
+
+figures_dir = os.path.join('C:', 'Users', 'gio', 'Data', 'figures', 'silencing')
+# os.makedirs(figures_dir, exist_ok=True)
+# make dir if it doesn't exist
+if not os.path.exists(figures_dir):
+    os.makedirs(figures_dir)
+
+
+preprocessed_data_dir_path = join(rootdir, 'preprocessed_data')
+
+net_str = 'resnet50'
+list_net_str = ['alexnet', 'vgg16', 'resnet50', 'resnet50_linf0.5', 'resnet50_linf1', 'resnet50_linf2', 'resnet50_linf4', 'resnet50_linf8']
+
+experiment_class = 'imagenette'
+experiment_class = 'neurons'
+
+
+all_net_mean_scores = pd.DataFrame()
+
+for net_str in list_net_str:
+    df_all_units = get_mean_score_df(net_str, rootdir, preprocessed_data_dir_path)
+    abs_df = df_all_units[df_all_units['type'] == 'none'].replace('none', 'abs')
+    inh_df = df_all_units[df_all_units['type'] == 'none'].replace('none', 'inh')
+    exc_df = df_all_units[df_all_units['type'] == 'none'].replace('none', 'exc')
+
+    # Concatenate the filtered DataFrames
+    df_all_units = pd.concat([df_all_units, abs_df, inh_df, exc_df], ignore_index=True)
+
+    # new column net_str
+    df_all_units['net_str'] = net_str
+    if all_net_mean_scores.empty:
+        all_net_mean_scores = df_all_units
+    else:
+        all_net_mean_scores = pd.concat([all_net_mean_scores, df_all_units], axis=0)
+
+
+
+#%%
+
+rcParams = {'font.size': 16,
+            'axes.labelsize': 16,
+            'axes.titlesize': 14,
+            'xtick.labelsize': 12,
+            'ytick.labelsize': 12,
+            'legend.fontsize': 12,
+            'pdf.fonttype': 42,
+            'ps.fonttype': 42,
+            'font.family': 'arial',
+            }
+
+with plt.rc_context(rcParams):
+    # facet grid plot
+    g = sns.FacetGrid(all_net_mean_scores, col='net_str', hue='type', col_wrap=4, height=2.5, aspect=3/4,
+                      hue_order=['abs', 'inh', 'exc', 'none'],
+                      palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'])
+    g.map(sns.lineplot, 'strength', 'scores', alpha=0.5, lw=3)
+    # g.map(sns.scatterplot, 'strength', 'scores', alpha=0.5, s=50)
+    # map also the confidence interval for the control type for each network
+    for ax, net in zip(g.axes.flatten(), list_net_str):
+        control_similarities = all_net_mean_scores[(all_net_mean_scores.type == 'none') & (all_net_mean_scores.net_str == net)].scores.values
+        ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+        ax.fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+        ax.axhline(y=control_similarities.mean(), color='k', linestyle='-', alpha=0.1, lw=3)
+    g.add_legend()
+    g.set_axis_labels('silencing strength', 'response')
+    g.set_titles('{col_name}')
+    g.tight_layout()
+
+    fig = g.fig
+
+    # save figure
+    fig_name = f'all_networks_all_units_fclayer_scores_vs_silencing_strength.png'
+    fig.savefig(join(figures_dir, fig_name), dpi=300)
+    fig_name = f'all_networks_all_units_fclayer_scores_vs_silencing_strength.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300)
+
+    plt.show()
+
+
+with plt.rc_context(rcParams):
+    # facet grid plot
+    g = sns.FacetGrid(all_net_mean_scores, col='net_str', hue='type', col_wrap=4, height=2.5, aspect=3/4,
+                      hue_order=[ 'inh', 'exc', 'none'],
+                      palette=[ 'tab:orange', 'tab:green', 'tab:blue'])
+    g.map(sns.lineplot, 'strength', 'scores', alpha=0.5, lw=3)
+    # g.map(sns.scatterplot, 'strength', 'scores', alpha=0.5, s=50)
+    # map also the confidence interval for the control type for each network
+    for ax, net in zip(g.axes.flatten(), list_net_str):
+        control_similarities = all_net_mean_scores[(all_net_mean_scores.type == 'none') & (all_net_mean_scores.net_str == net)].scores.values
+        ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+        ax.fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+        ax.axhline(y=control_similarities.mean(), color='k', linestyle='-', alpha=0.1, lw=3)
+    g.add_legend()
+    g.set_axis_labels('silencing strength', 'response')
+    g.set_titles('{col_name}')
+    g.tight_layout()
+
+    fig = g.fig
+
+    # save figure
+    fig_name = f'all_networks_all_units_fclayer_scores_vs_silencing_strength_no_abs.png'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+    fig_name = f'all_networks_all_units_fclayer_scores_vs_silencing_strength_no_abs.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+
+    plt.show()
+#%%
+
+
+
+
+#%%
+network_list = ['alexnet',
+                'resnet50', 'resnet50_linf0.5', 'resnet50_linf1', 'resnet50_linf2', 'resnet50_linf4', 'resnet50_linf8']
+
+similarity_metric = 'cosine_similarity'
+# similarity_metric = 'euclidean_norm'
+
+def load_rsa_df_from_net_str(net_str, rootdir, preprocessed_data_dir_path, network_list, similarity_metric='cosine_similarity'):
+    # Save the DataFrame if preprocessing to file is enabled
+    preprocess_data_to_file = True
+    df_dict = {}
+    image_dict = {}
+    complete_unit_index_list, layer_str, perturbation_pattern = get_complete_unit_list(net_str, rootdir)
+    df_rsa = preprocess_and_compute_rsa_df(df_dict, image_dict, network_list, complete_unit_index_list,
+                                           net_str, layer_str, preprocess_data_to_file, preprocessed_data_dir_path,
+                                           similarity_metric=similarity_metric)
+
+    # recover a dataframe with the mean cosine similarity for each type and strength in a tabular format
+    df_rsa_table = df_rsa.stack().stack().reset_index(name=f'mean_{similarity_metric}')
+    # average mean_cosine_similarity over the test_network level when grouping by type, strength and unit
+    df_rsa_table = df_rsa_table.groupby(['type', 'strength', 'unit'])[f'mean_{similarity_metric}'].mean().reset_index()
+
+    # drop units in units_to_exclude
+    # df_rsa_table = df_rsa_table[~df_rsa_table.unit.isin(units_to_exclude)]
+
+    # divide the mean_cosine_similarity by the control mean_cosine_similarity
+    for group_id, group_data in df_rsa_table.groupby(['unit']):
+        control_mean_similarity = group_data[group_data.type == 'none'][f'mean_{similarity_metric}'].values.mean()
+        df_rsa_table.loc[df_rsa_table.unit == group_id, f'norm_mean_{similarity_metric}'] = \
+            df_rsa_table.loc[df_rsa_table.unit == group_id, f'mean_{similarity_metric}'] / control_mean_similarity
+
+    return df_rsa_table
+
+all_net_rsa_df = pd.DataFrame()
+for net_str in list_net_str:
+    df_rsa_table = load_rsa_df_from_net_str(net_str, rootdir, preprocessed_data_dir_path, network_list, similarity_metric=similarity_metric)
+    df_rsa_table['net_str'] = net_str
+
+    abs_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'abs')
+    inh_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'inh')
+    exc_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'exc')
+
+    # Concatenate the filtered DataFrames
+    df_rsa_table = pd.concat([df_rsa_table, abs_df, inh_df, exc_df], ignore_index=True)
+
+    if all_net_rsa_df.empty:
+        all_net_rsa_df = df_rsa_table
+    else:
+        all_net_rsa_df = pd.concat([all_net_rsa_df, df_rsa_table], axis=0)
+
+#%%
+
+rcParams = {'font.size': 16,
+            'axes.labelsize': 14,
+            'axes.titlesize': 14,
+            'xtick.labelsize': 12,
+            'ytick.labelsize': 12,
+            'legend.fontsize': 12,
+            'pdf.fonttype': 42,
+            'ps.fonttype': 42,
+            'font.family': 'arial',
+            }
+
+with plt.rc_context(rcParams):
+    g = sns.FacetGrid(all_net_rsa_df, col='net_str', hue='type', col_wrap=4, height=2.5, aspect=3/4,
+                      hue_order=['abs', 'inh', 'exc', 'none'],
+                      palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'])
+    g.map(sns.lineplot, 'strength', f'mean_{similarity_metric}', alpha=0.5, lw=3)
+    # g.map(sns.scatterplot, 'strength', 'scores', alpha=0.5, s=50)
+    # map also the confidence interval for the control type for each network
+    for ax, net in zip(g.axes.flatten(), list_net_str):
+        control_similarities = all_net_rsa_df[(all_net_rsa_df.type == 'none') & (all_net_rsa_df.net_str == net)][f'mean_{similarity_metric}'].values
+        ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+        ax.fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+        ax.axhline(y=control_similarities.mean(), color='k', linestyle='-', alpha=0.1, lw=3)
+    g.add_legend()
+    # g.set_axis_labels('silencing strength', 'response')
+    g.set_titles('{col_name}')
+    g.tight_layout()
+
+    fig = g.fig
+    # save figure
+    fig_name = f'all_networks_all_units_fclayer_{similarity_metric}_vs_silencing_strength.png'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+    fig_name = f'all_networks_all_units_fclayer_{similarity_metric}_vs_silencing_strength.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+
+    plt.show()
+
+with plt.rc_context(rcParams):
+    g = sns.FacetGrid(all_net_rsa_df, col='net_str', hue='type', col_wrap=4, height=2.5, aspect=3 / 4,
+                      hue_order=['inh', 'exc', 'none'],
+                      palette=['tab:orange', 'tab:green', 'tab:blue'])
+    g.map(sns.lineplot, 'strength', f'mean_{similarity_metric}', alpha=0.5, lw=3)
+    # g.map(sns.scatterplot, 'strength', 'scores', alpha=0.5, s=50)
+    # map also the confidence interval for the control type for each network
+    for ax, net in zip(g.axes.flatten(), list_net_str):
+        control_similarities = all_net_rsa_df[(all_net_rsa_df.type == 'none') & (all_net_rsa_df.net_str == net)][
+            f'mean_{similarity_metric}'].values
+        ci = sns.utils.ci(sns.algorithms.bootstrap(control_similarities, n_boot=1000, func=np.mean), which=95, axis=0)
+        ax.fill_between(x=[0, 1], y1=ci[0], y2=ci[1], color=[0.9, 0.9, 0.9], alpha=0.5, edgecolor=None)
+        ax.axhline(y=control_similarities.mean(), color='k', linestyle='-', alpha=0.1, lw=3)
+    g.add_legend()
+    # g.set_axis_labels('silencing strength', 'response')
+    g.set_titles('{col_name}')
+    g.tight_layout()
+
+    fig = g.fig
+    # save figure
+    fig_name = f'all_networks_all_units_fclayer_{similarity_metric}_vs_silencing_strength_no_abs.png'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+    fig_name = f'all_networks_all_units_fclayer_{similarity_metric}_vs_silencing_strength_no_abs.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+
+    plt.show()
+
+#%%
+####################### Section to compute and plot the robustness of the networks ############################
+# extract only net_str containing resnet50
+resnet50_df = all_net_rsa_df[all_net_rsa_df.net_str.str.contains('resnet50')]
+# cretae robustness column by regex of the net_str column resnet50_linf\d include floatin point number, as optional
+resnet50_df['robustness'] = resnet50_df.net_str.str.extract(r'resnet50_linf(\d+\.?\d*)').astype(float)
+# replace nan robustness with 0
+resnet50_df['robustness'] = resnet50_df['robustness'].fillna(0)
+resnet50_df = resnet50_df.reset_index(drop=True)
+#%%
+# Function to calculate delta_mean_cosine_similarity
+def calculate_delta_mean_cosine_similarity(df):
+    # Get the mean_cosine_similarity where type is 'none'
+    mean_none = df.loc[df['strength'] == 0, 'mean_cosine_similarity'].mean()
+    # Subtract this value from all mean_cosine_similarity values in the group
+    return df['mean_cosine_similarity'] - mean_none
+
+# Apply the function to each group
+delta_series = resnet50_df.groupby(['type', 'unit', 'net_str']).apply(calculate_delta_mean_cosine_similarity).reset_index(level=[0,1,2 ], drop=True)
+# Add the delta_mean_cosine_similarity column to the original DataFrame
+resnet50_df.loc[delta_series.index, 'delta_mean_cosine_similarity'] = delta_series
+#%%
+from scipy.stats import pearsonr, spearmanr
+# compute correlation between robustness and delta_mean_cosine_similarity with pvlaue, per type
+# correlation, pvalue = spearmanr(resnet50_df.robustness, resnet50_df.delta_mean_cosine_similarity)
+
+group_correlation = resnet50_df.groupby(['type', 'strength']).apply(lambda x: spearmanr(x.robustness, x.delta_mean_cosine_similarity))
+# make a dataframe from the groupby object
+group_correlation_df = pd.DataFrame(group_correlation.to_list(), index=group_correlation.index, columns=['correlation', 'pvalue'])
+group_correlation_df.reset_index(inplace=True)
+
+table_correlation = group_correlation_df.copy()
+style_format = {'correlation': '{:.2f}', 'pvalue': '{:.0e}', 'strength': '{:.1f}'}
+
+for key, value in style_format.items():
+    table_correlation[key] = table_correlation[key].apply(lambda x: value.format(x))
+
+
+# multicolumn, first level type, second level strength, correlation and pvalue
+table_correlation = table_correlation[table_correlation.type.isin(['exc', 'inh'])]
+table_correlation = table_correlation.pivot(index='strength', columns='type').swaplevel(axis=1).sort_index(axis=1)
+# merge correlation and pvalue columns as correlation (pvalue) in a new column
+# loop over first level columns
+for col in table_correlation.columns.levels[0]:
+    table_correlation_tmp = table_correlation[col, 'correlation'] + ' (' + table_correlation[col, 'pvalue'] + ')'
+    # new column name
+    new_col = (col, 'correlation (pvalue)')
+    table_correlation[new_col] = table_correlation_tmp
+    table_correlation.drop(columns=[(col, 'correlation'), (col, 'pvalue')], inplace=True)
+
+
+#%%
+
+
+
+
+
+# print the table
+print(table_correlation.to_latex())
+
+
+#%%
+# plot group_correlation_df correlation vs strength, with hue per type
+with plt.rc_context(rcParams):
+    sns.lineplot(data=group_correlation_df, x='strength', y='correlation', hue='type')
+    plt.show()
+#%%
+# plot resnet50_df delta_mean_cosine_similarity vs robustness
+with plt.rc_context(rcParams):
+    sns.lineplot(data=resnet50_df[resnet50_df.strength==1], x='robustness', y='delta_mean_cosine_similarity', hue='strength', style='type', markers=True)
+    # sns.barplot(data=resnet50_df[resnet50_df.strength==1], x='robustness', y='delta_mean_cosine_similarity', hue='strength', ci=95)
+    sns.scatterplot(data=resnet50_df[resnet50_df.strength==1], x='robustness', y='delta_mean_cosine_similarity', hue='type')
+    # log x scale
+    plt.xscale('symlog')
+    # write original xticks, from robustness column
+    plt.xticks(ticks=resnet50_df.robustness.unique(), labels=resnet50_df.robustness.unique())
+    # ax1.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    plt.xlabel('robustness')
+    plt.ylabel('$\Delta$(cosine similarity)')
+    plt.title('Ablation effect vs robustness in ResNet50')
+    plt.show()
+
+#%%
+# plot resnet50_df delta_mean_cosine_similarity vs robustness with column per type, hue per strength
+with plt.rc_context(rcParams):
+    g = sns.FacetGrid(resnet50_df[resnet50_df.type.isin(['exc', 'inh'])], col='type', hue='strength',
+                      col_wrap=2, height=3, aspect=1, palette='viridis')
+    g.map(sns.lineplot, 'robustness', 'delta_mean_cosine_similarity')
+    plt.xscale('symlog')
+    plt.xticks(ticks=resnet50_df.robustness.unique(), labels=resnet50_df.robustness.unique())
+    # save figure
+    fig_name = f'resnet50_delta_mean_cosine_similarity_vs_robustness_per_type_per_strength.png'
+    fig = g.fig
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+    fig_name = f'resnet50_delta_mean_cosine_similarity_vs_robustness_per_type_per_strength.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+    plt.show()
+
+    g = sns.FacetGrid(resnet50_df[resnet50_df.type.isin(['exc', 'inh'])], col='type', hue='strength',
+                      col_wrap=2, height=3, aspect=1, palette='viridis')
+    g.map(sns.lineplot, 'robustness', 'mean_cosine_similarity')
+    g.add_legend(title='silencing strength')
+    plt.xscale('symlog')
+    plt.xticks(ticks=resnet50_df.robustness.unique(), labels=resnet50_df.robustness.unique())
+    # save figure
+    fig_name = f'resnet50_mean_cosine_similarity_vs_robustness_per_type_per_strength.png'
+    fig = g.fig
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+    fig_name = f'resnet50_mean_cosine_similarity_vs_robustness_per_type_per_strength.pdf'
+    fig.savefig(join(figures_dir, fig_name), dpi=300, transparent=True)
+
+    plt.show()
+#%%
 
 eeeeeee
 
