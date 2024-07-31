@@ -65,6 +65,7 @@ print(args)
 # args = parser.parse_args(["--net", "alexnet-eco-080", "--layer", ".classifier.ReLU5", "--G", "BigGAN", "--optim", "CholCMA","--chans",'1385','1386','--steps','100',"--reps",'10'])
 # args = parser.parse_args(["--net", "resnet50_linf8", "--layer", ".Linearfc", "--G", "fc6", "--optim", "CholCMA","--chans",'373','374','--steps','100',"--reps",'10', "--perturb", "minimize_kill_topFraction_in_weight_1"])
 # args = parser.parse_args(["--net", "resnet50_linf8", "--layer", ".Linearfc", "--G", "BigGAN", "--optim", "CholCMA","--chans",'373','374','--steps','100',"--reps",'10', "--perturb", "minimize_kill_topFraction_in_weight_1"])
+# args = parser.parse_args(["--net", "resnet50", "--layer", ".Linearfc", "--G", "BigGAN", "--optim", "CholCMA","--chans",'566','--steps','100',"--reps",'1', "--perturb", "kill_topFraction_abs_in_weight_0.70"])
 #%%
 """with a correct cmaes or initialization, BigGAN can match FC6 activation."""
 # Folder to save

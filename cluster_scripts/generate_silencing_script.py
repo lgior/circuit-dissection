@@ -1,11 +1,14 @@
 import numpy as np
 
-channel = 701#373#398 # abacus # 373 # imagenette: 0, 217, 482, 491, 497, 566, 569, 571, 574, 701
-channel = [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
+channel = [373]#373#398 # abacus # 373 # imagenette: 0, 217, 482, 491, 497, 566, 569, 571, 574, 701
+channel = [373] + [0, 217, 482, 491, 497, 566, 569, 571, 574, 701]
+channel = [0]  # for single neuron
+base_params = "--net alexnet-single-neuron2 --layer .classifier.Linear6 --optim CholCMA --reps 10"
+# base_params = "--net vgg16 --layer .classifier.Linear6 --optim CholCMA --reps 10"
 # base_params = "--net alexnet --layer .classifier.Linear6 --optim CholCMA --reps 10"
 # base_params = "--net alexnet-eco-080 --layer .classifier.Linear6 --optim CholCMA --reps 10"
 # base_params = "--net resnet50 --layer .Linearfc --optim CholCMA --reps 10"
-base_params = "--net resnet50_linf0.5 --layer .Linearfc --optim CholCMA --reps 10"
+# base_params = "--net resnet50_linf0.5 --layer .Linearfc --optim CholCMA --reps 10"
 # base_params = "--net resnet50_linf1 --layer .Linearfc --optim CholCMA --reps 10"
 # base_params = "--net resnet50_linf2 --layer .Linearfc --optim CholCMA --reps 10"
 # base_params = "--net resnet50_linf4 --layer .Linearfc --optim CholCMA --reps 10"

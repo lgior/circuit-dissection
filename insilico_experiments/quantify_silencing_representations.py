@@ -402,7 +402,33 @@ net_str = 'vgg16'
 # net_str = 'alexnet-single-neuron_Caos-05092024-002'
 # net_str = 'alexnet-single-neuron_Caos-05132024-002'
 # net_str = 'alexnet-single-neuron_Caos-05142024-003'
-net_str = 'alexnet-single-neuron_Diablito-16052024-002'
+# net_str = 'alexnet-single-neuron_Diablito-16052024-002'
+# net_str = 'alexnet-single-neuron_Diablito-07062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-17062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-18062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-19062024-003'
+# net_str = 'alexnet-single-neuron_Diablito-20062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-21062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-24062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-25062024-002'
+# net_str = 'alexnet-single-neuron_Diablito-26062024-002'
+# net_str = 'alexnet-single-neuron_Caos-06272024-002'
+# net_str = 'alexnet-single-neuron_Diablito-08072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-09072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-11072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-12072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-15072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-16072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-17072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-18072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-19072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-22072024-002'
+# net_str = 'alexnet-single-neuron_Caos-07232024-006'
+# net_str = 'alexnet-single-neuron_Diablito-24072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-25072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-26072024-002'
+# net_str = 'alexnet-single-neuron_Diablito-29072024-002'
+net_str = 'alexnet-single-neuron_Diablito-30072024-002'
 
 experiment_class = 'imagenette'
 experiment_class = 'neurons'
@@ -445,8 +471,8 @@ if experiment_class == 'imagenette':
 #%%
 import zlib
 
-compile_all_units = True
-# compile_all_units = False
+# compile_all_units = True
+compile_all_units = False
 
 net_str_list = [
     # 'alexnet-single-neuron_Caos-12192023-005',
@@ -970,7 +996,7 @@ for key, value in df_dict.items():
             # top9_im_grid = anevo.get_top_n_im_grid(scores=df_temp[df_temp.old_index == list_index].scores.tolist(),
             #                                        images=image_list[list_index], top_n=n_top)
 #%%
-
+dooodosiidi
 ####################### Section to compute and plot the RSA results for all CNNS ############################
 
 
