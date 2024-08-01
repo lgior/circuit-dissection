@@ -8,6 +8,9 @@
 #SBATCH --mail-user=giordano_ramos@hms.harvard.edu
 #SBATCH -o alexnet-eco-topSilencing_evol_%A_%a.out
 
+module load gcc/9.2.0
+module load cuda/11.7
+
 conda activate pytorcha
 script_path="/home/gr105/Code/circuit-dissection/insilico_experiments/TopSilencing_Evol_cmp_O2_cluster.py"
 
