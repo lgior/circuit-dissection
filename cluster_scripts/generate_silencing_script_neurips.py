@@ -12,7 +12,7 @@ channel = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10,
            544, 550, 640, 641, 642, 643, 644, 645, 646, 649,
            652, 653, 657, 672, 768, 772, 776, 777, 779, 805,
            898, 899, 900, 904, 905, 906, 912, 913, 917, 929]
-channel = [999]  # testing
+# channel = [999]  # testing
 
 # base_params = "--net vgg16 --layer .classifier.Linear6 --optim CholCMA --reps 10"
 # base_params = "--net alexnet --layer .classifier.Linear6 --optim CholCMA --reps 10"
