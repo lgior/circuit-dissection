@@ -22,6 +22,9 @@ if platform == "linux":  # CHPC cluster
     elif "ris.wustl.edu" in hostname:
         homedir = os.path.expanduser('~')
         netsdir = os.path.join(homedir, 'Generate_DB/nets')
+    else:
+        homedir = os.path.expanduser('~')
+        netsdir = os.path.join(homedir, 'Generate_DB/nets')
     load_urls = True
     # ckpt_path = {"vgg16": "/scratch/binxu/torch/vgg16-397923af.pth"}
 else:
