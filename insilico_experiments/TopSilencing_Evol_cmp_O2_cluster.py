@@ -75,12 +75,17 @@ print(args)
 #%%
 """with a correct cmaes or initialization, BigGAN can match FC6 activation."""
 # Folder to save
-if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
-    rootdir = r"M:\Data"
-    rootdir = r"C:\Users\gio\Data"  # personal folder gets full at 50GB
-else:
-    # rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
+try:
     rootdir = r"/n/scratch/users/g/gr105/silencing"
+except ImportError as e:
+    print(e)
+    if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
+        rootdir = r"M:\Data"
+        rootdir = r"C:\Users\gio\Data"  # personal folder gets full at 50GB
+    else:
+        # rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
+        rootdir = r"/n/scratch/users/g/gr105/silencing"
+
 
 # GR add params for running it locally and interactively
 # from easydict import EasyDict as edict
