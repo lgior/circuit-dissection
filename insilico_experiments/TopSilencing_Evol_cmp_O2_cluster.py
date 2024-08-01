@@ -3,11 +3,16 @@ import re
 import sys
 import os
 # sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
-if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':
-    sys.path.append(r"M:\Code\Neuro-ActMax-GAN-comparison")  # new PC
-elif sys.platform == "linux":
-    # sys.path.append(r"\C:\Users\giordano\Documents\Code\Neuro-ActMax-GAN-comparison")  #oldPC
+try:
     sys.path.append(r"/home/gr105/Code/circuit-dissection")  # O2
+except ImportError as e:
+    print(e)
+    if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':
+        sys.path.append(r"M:\Code\Neuro-ActMax-GAN-comparison")  # new PC
+    elif sys.platform == "linux":
+        # sys.path.append(r"\C:\Users\giordano\Documents\Code\Neuro-ActMax-GAN-comparison")  #oldPC
+        sys.path.append(r"/home/gr105/Code/circuit-dissection")  # O2
+
 import tqdm
 import numpy as np
 from os.path import join

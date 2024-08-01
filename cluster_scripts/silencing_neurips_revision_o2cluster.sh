@@ -8,10 +8,10 @@
 #SBATCH --mail-user=giordano_ramos@hms.harvard.edu
 #SBATCH -o alexnet-eco-topSilencing_evol_%A_%a.out
 
-conda activate torcha
-script_path="M:/Code/Neuro-ActMax-GAN-comparison/insilico_experiments/TopSilencing_Evol_cmp_O2_cluster.py"
+conda activate pytorcha
+script_path="/home/gr105/Code/circuit-dissection/insilico_experiments/TopSilencing_Evol_cmp_O2_cluster.py"
 
-cd M:/Code/Neuro-ActMax-GAN-comparison
+cd /home/gr105/Code/circuit-dissection
 
 # Generate the list of arguments using your Python script and store them in an array
 mapfile -t ARGS_ARRAY < <(python cluster_scripts/generate_silencing_script.py | sed 's/[][]//g;s/, /\n/g')
