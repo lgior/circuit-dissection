@@ -5,8 +5,9 @@ import os
 # sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
 if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':
     sys.path.append(r"M:\Code\Neuro-ActMax-GAN-comparison")  # new PC
-else:
-    sys.path.append(r"\C:\Users\giordano\Documents\Code\Neuro-ActMax-GAN-comparison")  #oldPC
+elif sys.platform == "linux":
+    # sys.path.append(r"\C:\Users\giordano\Documents\Code\Neuro-ActMax-GAN-comparison")  #oldPC
+    sys.path.append(r"/home/gr105/Code/Neuro-ActMax-GAN-comparison")  # O2
 import tqdm
 import numpy as np
 from os.path import join
@@ -73,7 +74,8 @@ if os.environ['COMPUTERNAME'] == 'MNB-PONC-D21184':  # new pc
     rootdir = r"M:\Data"
     rootdir = r"C:\Users\gio\Data"  # personal folder gets full at 50GB
 else:
-    rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
+    # rootdir = r"C:\Users\giordano\Documents\Data"  # r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
+    rootdir = r"/n/scratch/users/g/gr105/silencing"
 
 # GR add params for running it locally and interactively
 # from easydict import EasyDict as edict
