@@ -779,13 +779,24 @@ formatted_lpips_df.rename(columns={'level_3': 'unit'}, inplace=True)
 formatted_lpips_df['similarity'] = 1 - formatted_lpips_df['mean_lpips']
 
 #%%
+formatted_lpips_df.rename(columns={'level_2': 'unit'}, inplace=True)
 # append rows where type is 'none' to the dataframe to the exc and inh rows
 none_rows_tmp = formatted_lpips_df[formatted_lpips_df.type == 'none']
 # concat the rows but replacing typpe with exc and inh
 formatted_lpips_df_appended = pd.concat([formatted_lpips_df, none_rows_tmp.replace('none', 'exc')])
 formatted_lpips_df_appended = pd.concat([formatted_lpips_df_appended, none_rows_tmp.replace('none', 'inh')])
 
+#%%
 
+for group_id, group_data in formatted_lpips_df_appended.groupby(['unit']):
+    control_mean_similarity = group_data[group_data.type == 'none'][f'mean_lpips'].values.mean()
+    formatted_lpips_df_appended.loc[formatted_lpips_df_appended.unit == group_id, f'norm_mean_lpips'] = \
+        formatted_lpips_df_appended.loc[formatted_lpips_df_appended.unit == group_id, f'mean_lpips'] - control_mean_similarity
+
+for group_id, group_data in formatted_lpips_df_appended.groupby(['unit']):
+    control_mean_similarity = group_data[group_data.type == 'none'][f'similarity'].values.mean()
+    formatted_lpips_df_appended.loc[formatted_lpips_df_appended.unit == group_id, f'norm_similarity'] = \
+        formatted_lpips_df_appended.loc[formatted_lpips_df_appended.unit == group_id, f'similarity'] - control_mean_similarity
 
 #%%
 # plot the LPIPS similarity vs the silencing strength separately for each type
@@ -802,6 +813,8 @@ sns.lineplot(
     data=formatted_lpips_df_appended,
     x='strength',
     y='similarity',
+    # y='norm_mean_lpips',
+    # y='norm_similarity',
     hue='type',
     ax=ax,
     palette=palette,
@@ -809,21 +822,21 @@ sns.lineplot(
 )
 
 # Create the stripplot
-sns.stripplot(
-    data=formatted_lpips_df,
-    x='strength',
-    y='similarity',
-    hue='type',
-    ax=ax,
-    palette=palette,
-    alpha=0.5,
-    dodge=False,
-    hue_order=hue_order,
-    native_scale=True,
-    jitter=0.05,
-    zorder=-10,
-    size=3
-)
+# sns.stripplot(
+#     data=formatted_lpips_df,
+#     x='strength',
+#     y='similarity',
+#     hue='type',
+#     ax=ax,
+#     palette=palette,
+#     alpha=0.5,
+#     dodge=False,
+#     hue_order=hue_order,
+#     native_scale=True,
+#     jitter=0.05,
+#     zorder=-10,
+#     size=3
+# )
 
 # Remove the duplicate legend
 handles, labels = ax.get_legend_handles_labels()
