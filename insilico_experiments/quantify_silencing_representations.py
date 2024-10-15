@@ -727,6 +727,24 @@ for group_id, group_data in df_rsa_table.groupby(['unit']):
         df_rsa_table.loc[df_rsa_table.unit == group_id, f'mean_{similarity_metric}'] / control_mean_similarity
 
     # df_rsa_table.loc[df_rsa_table.unit == unit, 'mean_cosine_similarity'] /= df_rsa_table[df_rsa_table.type == 'none'].mean_cosine_similarity.values.mean()
+
+
+#%%
+# subtract the control mean_cosine_similarity from the mean_cosine_similarity
+for group_id, group_data in df_rsa_table.groupby(['unit']):
+    control_mean_similarity = group_data[group_data.type == 'none'][f'mean_{similarity_metric}'].values.mean()
+    df_rsa_table.loc[df_rsa_table.unit == group_id, f'norm_mean_{similarity_metric}'] = \
+        df_rsa_table.loc[df_rsa_table.unit == group_id, f'mean_{similarity_metric}'] - control_mean_similarity
+
+#%%
+# new for ICLR 2025
+abs_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'abs')
+inh_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'inh')
+exc_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'exc')
+
+# Concatenate the filtered DataFrames
+df_rsa_table = pd.concat([df_rsa_table, abs_df, inh_df, exc_df], ignore_index=True)
+
 #%%
 
 
