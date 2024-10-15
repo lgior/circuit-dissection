@@ -514,7 +514,7 @@ with open(join(preprocessed_data_dir_path, file_name), 'wb') as handle:
     pickle.dump(objectness_df_biggan, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 #%%
-
+objectness_df_biggan = pd.read_pickle(join(preprocessed_data_dir_path, f'biggan_dataframe_objectness.pickle'))
 # check which columns are lists
 objectness_df_biggan = objectness_df_biggan.explode(objectness_df_biggan.columns.values.tolist())
 # mean and std of max objectness
@@ -553,7 +553,7 @@ objectness_df_fc6 = pd.DataFrame(objectness_dict_fc6)
 file_name = f'fc6_dataframe_objectness.pickle'
 with open(join(preprocessed_data_dir_path, file_name), 'wb') as handle:
     pickle.dump(objectness_df_fc6, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+#%%
 objectness_df_fc6 = pd.read_pickle(join(preprocessed_data_dir_path, f'fc6_dataframe_objectness.pickle'))
 objectness_df_fc6 = objectness_df_fc6.explode(objectness_df_fc6.columns.values.tolist())
 
@@ -565,13 +565,18 @@ std_max_objectness = objectness_df_fc6['max_objectness'].std()
 
 print(f'Max objectness (mean +/- std): {mean_max_objectness:.2f} +/- {std_max_objectness:.2f}')
 
-#%%
+#%% COMBINE BIGGAN AND FC6 DATAFRAMES
+objectness_df_biggan = pd.read_pickle(join(preprocessed_data_dir_path, f'biggan_dataframe_objectness.pickle'))
+objectness_df_fc6 = pd.read_pickle(join(preprocessed_data_dir_path, f'fc6_dataframe_objectness.pickle'))
+objectness_df_fc6 = objectness_df_fc6.explode(objectness_df_fc6.columns.values.tolist())
+objectness_df_biggan = objectness_df_biggan.explode(objectness_df_biggan.columns.values.tolist())
+
 # merge the dataframes for biggan and fc6
 objectness_df_biggan['gan'] = 'biggan'
 objectness_df_fc6['gan'] = 'fc6'
 
-
 objectness_df = pd.concat([objectness_df_biggan, objectness_df_fc6], axis=0)
+
 #%%
 # plot distributions of max objectness for biggan and fc6
 sns.histplot(objectness_df, x='max_objectness', hue='gan', kde=True)
@@ -599,8 +604,57 @@ print('mean = %.2f (%.2f, %.2f)' % (mean_max_objectness,
 
 ci_max_objectness_by_gan = objectness_df.groupby('gan')['max_objectness'].apply(lambda x: stats.t.interval(0.95, len(x)-1, loc=np.mean(x), scale=stats.sem(x)))
 
+#%%
+fig, ax = plt.subplots(figsize=(6, 4))
+sns.violinplot(data=objectness_df, y='max_objectness', x='gan', cut=0, linewidth=1)
+# sns.boxplot(data=objectness_df, y='max_objectness', x='gan')
+# horizontal line at 0.3, labelled as 'ablation control'
+plt.axhline(0.3, color='gray', linestyle='--', label='~ ablation control')
+# horizontal line at mean of max objectness combined for biggan and fc6
+plt.axhline(objectness_df[objectness_df['gan'].isin(['biggan', 'fc6'])]['max_objectness'].mean(), color='black', linestyle='--', label='GAN mean')
+plt.legend()
+plt.title('Max objectness distribution \nof random GAN samples')
+plt.tight_layout()
+plt.show()
 
 #%%
+objectness_ood_df = pd.read_pickle(join(preprocessed_data_dir_path, f'{dataset_name}_dataframe_objectness.pickle'))
+objectness_ood_df = objectness_ood_df.explode(objectness_ood_df.columns.values.tolist())
+objectness_ood_df['gan'] = 'imagenet-o'
+
+objectness_df = pd.concat([objectness_df, objectness_ood_df], axis=0)
+
+
+#%%
+fig, ax = plt.subplots(figsize=(6, 4))
+sns.violinplot(data=objectness_df, y='max_objectness', x='gan', cut=0, linewidth=1,
+                order=['imagenet-o', 'biggan', 'fc6'])
+# sns.boxplot(data=objectness_df, y='max_objectness', x='gan')
+# horizontal line at 0.3, labelled as 'ablation control'
+plt.axhline(0.3, color='gray', linestyle='--', label='~ ablation control')
+plt.legend()
+plt.title('Max objectness distribution \nof random GAN samples')
+plt.tight_layout()
+plt.show()
+
+#%%
+# mean of max objectness for biggan, fc6
+mean_max_objectness = objectness_df[objectness_df.gan.isin(['biggan', 'fc6'])]['max_objectness']
+
+ci_max_objecteness_gans = stats.bootstrap(
+    (mean_max_objectness.values,), np.mean(), confidence_level=0.95, n_resamples=1000)
+
+# violin plot of max objectness for biggan, fc6
+fig, ax = plt.subplots(figsize=(6, 4))
+sns.histplot(data=mean_max_objectness)
+plt.title('CI of mean max objectness for biggan and fc6: '
+              f'{ci_max_objecteness_gans.confidence_interval.low:.2f} - {ci_max_objecteness_gans.confidence_interval.high:.2f}')
+plt.tight_layout()
+plt.show()
+
+
+#%%
+
 # import make_grid from torchvision.utils
 from torchvision.utils import make_grid, save_image
 
@@ -611,4 +665,3 @@ grid = make_grid(samples, nrow=10)
 plt.imshow(ToPILImage()(grid))
 plt.show()
 
-#%%
