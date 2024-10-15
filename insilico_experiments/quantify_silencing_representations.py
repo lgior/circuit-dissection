@@ -531,11 +531,11 @@ net_to_exclude = [
 if compile_all_units:
 
     crc32_hashes = [zlib.crc32(s.encode()) & 0xFFFFFFFF for s in net_str_list]
-
+    # this is the zero-th unit for the neuron models, as we use one network per neuron so far, they could be combined in the future
     complete_unit_index_list = [0]
     df_dict = {}
     image_dict = {}
-    # Iterate over complete_unit_index_list
+    # Iterate over complete_unit_index_list, making a dictionary with the hash as key for joining all neuron models
     for net_str_index, tmp_net_str in tqdm(zip(crc32_hashes, net_str_list)):
         complete_unit_index = complete_unit_index_list[0]
         df_dict_tmp, image_dict_tmp = preprocess_silencing_data_to_df(rootdir, tmp_net_str, layer_str, complete_unit_index_list,
@@ -633,10 +633,10 @@ params = {
 # make a grid of 4x3 axes for plotting, one for each unit
 with plt.rc_context(params):
     # TODO make plotting adaptable to the number of units
-    nrows= 3 if experiment_class == 'imagenette' else 4
+    nrows= 3 if experiment_class == 'imagenette' else np.ceil(np.sqrt(len(complete_unit_index_list))).astype(int)
     ncols=np.ceil(len(complete_unit_index_list) / nrows).astype(int)
     if compile_all_units or experiment_class == 'imagenette':
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(ncols*2, nrows*2), dpi=300, sharex=True, sharey=True)
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(ncols*2.5, nrows*2), dpi=300, sharex=True, sharey=False)
     else:
         fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(14, 9), dpi=300, sharex=True, sharey=True)
 
@@ -652,6 +652,9 @@ for ii, unit in enumerate(complete_unit_index_list):
     df.type = df.type.astype("string")
     # df = df.reset_index(names='list_index') ## changed to inplace in loading function
     # with plt.rc_context(params):
+    if compile_all_units:
+        net_str = 'neurons'
+        unit = net_str_list[crc32_hashes.index(unit)].split('_')[-1]
     plot_scores_vs_silencing(df, net_str, layer_str, unit, ax=axes[ii // ncols, ii % ncols], params_dict=params)
     if ii != 0:
         axes[ii // ncols, ii % ncols].get_legend().remove()
@@ -693,7 +696,8 @@ similarity_metric = 'cosine_similarity'
 # similarity_metric = 'euclidean_norm'
 # Save the DataFrame if preprocessing to file is enabled
 if compile_all_units:
-    file_name = f'rsa_all_neurons_{layer_str}_metric_{similarity_metric}_neurips.pkl'
+    # file_name = f'rsa_all_neurons_{layer_str}_metric_{similarity_metric}_neurips.pkl'
+    file_name = f'rsa_all_neurons_{layer_str}_metric_{similarity_metric}_iclr.pkl'
     if os.path.exists(join(preprocessed_data_dir_path, file_name)):
         df_rsa = pd.read_pickle(join(preprocessed_data_dir_path, file_name))
     else:
@@ -746,7 +750,10 @@ exc_df = df_rsa_table[df_rsa_table['type'] == 'none'].replace('none', 'exc')
 df_rsa_table = pd.concat([df_rsa_table, abs_df, inh_df, exc_df], ignore_index=True)
 
 #%%
+if compile_all_units:
+    df_rsa_table['experiment'] = df_rsa_table['unit'].apply(lambda x: net_str_list[crc32_hashes.index(int(x))])
 
+#%%
 
 # malke the previous cell into a function
 def plot_rsa(ax, df_rsa_table, net_str, layer_str, y_var='mean_cosine_similarity', type_to_plot='all'):
@@ -774,6 +781,10 @@ def plot_rsa(ax, df_rsa_table, net_str, layer_str, y_var='mean_cosine_similarity
         sns.lineplot(data=df_rsa_table, x='strength', y=y_var, hue='type', alpha=0.5, lw=3,
                      hue_order=['abs', 'inh', 'exc', 'none'],
                      palette=['tab:purple', 'tab:orange', 'tab:green', 'tab:blue'])
+    if type_to_plot == 'no_abs':
+        sns.lineplot(data=df_rsa_table[df_rsa_table.type != 'abs'], x='strength', y=y_var, hue='type', alpha=0.5, lw=3,
+                     hue_order=['inh', 'exc', 'none'],
+                    palette=['tab:orange', 'tab:green', 'tab:blue'])
     else:
         sns.scatterplot(data=df_rsa_table[df_rsa_table.type == 'none'], x='strength', y=y_var, hue='unit',
                         ax=ax, palette='tab20', alpha=1, legend=False)
@@ -828,11 +839,14 @@ elif similarity_metric == 'euclidean_norm':
 var_names_list = [y_var, y_var_norm]
 
 with plt.rc_context(params):
-    for itype, type in enumerate(['all', 'inh', 'exc', 'abs']):
+    # for itype, type in enumerate(['all', 'inh', 'exc', 'abs']):
+    for itype, type in enumerate(['no_abs', 'inh', 'exc', 'abs']):
         for jnorm, yvar in enumerate(var_names_list):
             ax_tmp = fig.add_subplot(gs[jnorm, itype])
             plot_rsa(ax_tmp, df_rsa_table, net_str, layer_str, y_var=yvar, type_to_plot=type)
             ax_tmp.set_xticks([0, 0.5, 1])
+            # set y ticks to 3 ticks maximum with locator_params
+            ax_tmp.locator_params(axis='y', nbins=3)
             if itype == 1 or itype == 2:
                 # remove legend from the last plot
                 ax_tmp.legend().remove()
@@ -930,12 +944,14 @@ def plot_topn_imgrid_from_df(df, image_list, layer_str, net_str, unit, n_types, 
                 grid[ncols * (nrows - 1)].set_visible(False)
             plt.axis('off')
             grid[0].set_visible(False)
-            grid[ncols * (nrows - 1)].set_visible(False)
+            if n_types == 4:
+                grid[ncols * (nrows - 1)].set_visible(False)
 
     # fig.suptitle(f'{net_str} {layer_str}')
     fig.suptitle(f'{net_str} \n {layer_str} unit {unit}')
 
     fig.tight_layout()
+    plt.tight_layout()
     fig_filename = os.path.join(figures_dir, f'{net_str}_{layer_str}_{unit}_preferred_top{n_top}_images.pdf')
     plt.savefig(fig_filename,
                 dpi=300, format='pdf', metadata=None,
@@ -952,8 +968,9 @@ from torchvision.utils import save_image
 
 params = {
    'axes.labelsize': 14,
-   'axes.titlesize': 16,
-   'font.size': 22,
+   'axes.titlesize': 14, #16,
+   'figure.titlesize': 16,
+   'font.size': 18,#22,
    'font.family': 'Arial',
    'legend.fontsize': 16,
    'xtick.labelsize': 16,
@@ -966,7 +983,12 @@ params = {
 for key, value in df_dict.items():
     print(key)
     unit = key
+    if compile_all_units:
+        net_str = net_str_list[crc32_hashes.index(key)].split('_')[-1]
     df_temp = df_dict[key].copy()
+    # iclr 2025
+    df_temp = df_temp[df_temp['strength'].isin([0, 1])]
+
     # find the column that contains score substring in its name
     score_col = [col for col in df_temp.columns if 'scores' in col][0]
     df_temp = df_temp.explode(score_col)
@@ -977,13 +999,14 @@ for key, value in df_dict.items():
     n_top = df_temp.sort_values(['type', 'strength']).groupby(['type', 'strength']).apply(len).max()
     # max_n_ims_type is the number of silencing strengths for the type with the most silencing strengths
     max_n_ims_type = df_temp.groupby(['type', 'strength']).count().reset_index().groupby('type')['strength'].nunique().max()
+    n_types = len(df_temp['type'].unique())
 
     # plot_topn_imgrid_from_df(df_temp, image_dict[0], n_types=4, max_n_ims_type=10, n_top=9)
 
     with mpl.rc_context(params):
-        plot_topn_imgrid_from_df(df_temp, image_dict[key], layer_str, net_str, unit, n_types=4,
-                                 max_n_ims_type=max_n_ims_type, n_top=max(20, int(np.sqrt(n_top))**2))
-    # break
+        plot_topn_imgrid_from_df(df_temp, image_dict[key], layer_str, net_str, unit, n_types=n_types,
+                                 max_n_ims_type=max_n_ims_type, n_top=min(1, int(np.sqrt(n_top))**2))
+    break
     image_list = image_dict[key]
     top_n = 9
     for ii, (name, group) in enumerate(
@@ -1444,6 +1467,8 @@ eeeeeee
 for unit, df_temp in df_dict.items():
     print(unit)
     df_temp = df_temp.copy()
+    # delete rows with df_temp['strength'] ~= 0 or 1
+    df_temp = df_temp[df_temp['strength'].isin([0, 1])]
 
     # Explode score column
     score_col = [col for col in df_temp.columns if 'scores' in col][0]
@@ -1481,23 +1506,31 @@ for unit, df_temp in df_dict.items():
             tmp_grid = make_grid(images, nrow=2, padding=5)
             tmp_grid_list.append(tmp_grid)
 
-    # Add padding to tmp_grid_list
-    padded_tmp_grid_list = [tmp_grid_list[0]] + tmp_grid_list[:n_types] + \
-                           [tmp_grid_list[0]] + tmp_grid_list[n_types: 2 * n_types] + \
-                           [tmp_grid_list[0]] + tmp_grid_list[2 * n_types:-1]
+
+    # Add padding to tmp_grid_list, start with control image and continue on in intervals of n_types
+    padded_tmp_grid_list = []
+    for i in range(n_types - 1):
+        padded_tmp_grid_list += [tmp_grid_list[0]] + tmp_grid_list[i * max_n_ims_type: (i + 1) * max_n_ims_type]
+
+
+    group_keys = list(df_temp.groupby(['type', 'strength']).groups.keys())
 
     # Plot grid of images
-    indices_to_subplot = [-1] + list(range(0, n_types)) + [-1] + list(range(n_types, 2 * n_types)) + [-1] + list(
-        range(2 * n_types, 3 * n_types))
-    fig, axes = plt.subplots(nrows=3, ncols=n_types + 1, figsize=(1.5 * 5, 1.5 * 3), dpi=300)
+    # map index list to subplot index list in intervals of max_n_ims_type, appending the control image at the beginning
+    indices_to_subplot = []
+    for i in range(n_types - 1):
+        indices_to_subplot +=  [-1] + list(range(i * max_n_ims_type, (i + 1) * max_n_ims_type))
+    fig, axes = plt.subplots(nrows=n_types - 1, ncols=max_n_ims_type + 1, figsize=(1.5 * (max_n_ims_type + 1), 1.5 * (n_types - 1)), dpi=300)
     for ii, tmp_grid in enumerate(padded_tmp_grid_list):
-        plt.sca(axes[ii // (n_types + 1), ii % (n_types + 1)])
+        plt.sca(axes[ii // (max_n_ims_type + 1), ii % (max_n_ims_type + 1)])
         plt.imshow(tmp_grid_list[indices_to_subplot[ii]].permute(1, 2, 0))
         plt.axis('off')
         plt.title(f'{group_keys[indices_to_subplot[ii]][0]} {group_keys[indices_to_subplot[ii]][1]}')
     plt.tight_layout()
     plt.show()
-
+    if compile_all_units:
+        fig_filename = os.path.join(figures_dir, f'{net_str}_{layer_str}_unit_{unit}_top{top_n}_images.pdf')
+    break
 
 #%%
 # add the last list to positions 0, ntypes, 2*ntypes
